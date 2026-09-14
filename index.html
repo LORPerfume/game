@@ -7,180 +7,420 @@
 <title>اربح العطر 🎁</title>
 
 <style>
-    * {
-        box-sizing: border-box;
-    }
 
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #111, #2c0b12);
-        color: white;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
+* {
+    box-sizing: border-box;
+}
 
-    .container {
-        width: 95%;
-        max-width: 900px;
-    }
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Arial, Tahoma, sans-serif;
+
+    background:
+        radial-gradient(circle at top, #5b101f 0%, #26070e 35%, #090909 100%);
+
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+}
+
+.container {
+    width: 95%;
+    max-width: 950px;
+    text-align: center;
+}
+
+h1 {
+    font-size: 44px;
+    margin: 0 0 10px;
+}
+
+.subtitle {
+    font-size: 20px;
+    margin-bottom: 25px;
+    opacity: 0.95;
+}
+
+.game {
+    position: relative;
+
+    width: 100%;
+    height: 430px;
+
+    overflow: hidden;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,0.08),
+            rgba(255,255,255,0.02)
+        );
+
+    border: 1px solid rgba(255,255,255,0.15);
+
+    box-shadow:
+        0 30px 80px rgba(0,0,0,0.45),
+        inset 0 0 40px rgba(255,255,255,0.03);
+}
+
+
+/* المربع المطلوب التقاط العطر داخله */
+
+.target {
+
+    position: absolute;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    width: 185px;
+    height: 270px;
+
+    border: 5px dashed white;
+    border-radius: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;
+    font-weight: bold;
+
+    color: rgba(255,255,255,0.8);
+
+    z-index: 1;
+
+    box-shadow:
+        0 0 15px rgba(255,255,255,0.35),
+        0 0 45px rgba(255,255,255,0.15);
+
+}
+
+
+/* صورة العطر */
+
+.perfume {
+
+    position: absolute;
+
+    left: -180px;
+    top: 50%;
+
+    width: 140px;
+    height: 220px;
+
+    object-fit: contain;
+
+    transform: translateY(-50%);
+
+    z-index: 3;
+
+    filter:
+        drop-shadow(0 25px 18px rgba(0,0,0,0.55));
+
+    will-change: left, top;
+
+}
+
+
+/* التعليمات */
+
+.instruction {
+
+    margin-top: 25px;
+
+    font-size: 19px;
+
+    line-height: 1.8;
+}
+
+.highlight {
+    color: #ffb4bf;
+    font-weight: bold;
+}
+
+.hint {
+
+    margin-top: 10px;
+
+    font-size: 15px;
+
+    opacity: 0.65;
+}
+
+
+/* شاشات الموبايل */
+
+@media (max-width: 600px) {
 
     h1 {
-        font-size: 42px;
-        margin-bottom: 10px;
+        font-size: 30px;
     }
 
     .subtitle {
-        font-size: 20px;
-        margin-bottom: 30px;
+        font-size: 17px;
     }
 
     .game {
-        position: relative;
-        width: 100%;
-        height: 400px;
-        background: rgba(255,255,255,0.06);
-        border: 2px solid rgba(255,255,255,0.15);
-        border-radius: 25px;
-        overflow: hidden;
+        height: 340px;
     }
 
-    /* مكان الفوز */
     .target {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 180px;
-        height: 260px;
-        border: 5px dashed #ffffff;
-        border-radius: 20px;
-        z-index: 1;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        font-size: 18px;
-        font-weight: bold;
-        color: rgba(255,255,255,0.7);
-
-        box-shadow:
-            0 0 15px rgba(255,255,255,.5),
-            0 0 40px rgba(255,255,255,.2);
-    }
-
-    /* صورة العطر */
-    .perfume {
-        position: absolute;
         width: 140px;
         height: 220px;
-        object-fit: contain;
-
-        top: 50%;
-        transform: translateY(-50%);
-
-        z-index: 2;
-
-        animation: movePerfume 3.5s linear infinite alternate;
-
-        filter: drop-shadow(0 20px 15px rgba(0,0,0,.5));
     }
 
-    @keyframes movePerfume {
-
-        0% {
-            left: -150px;
-        }
-
-        100% {
-            left: calc(100% - 20px);
-        }
+    .perfume {
+        width: 105px;
+        height: 170px;
     }
 
     .instruction {
-        margin-top: 25px;
-        font-size: 19px;
-        line-height: 1.8;
+        font-size: 16px;
     }
+}
 
-    .highlight {
-        color: #ffcccb;
-        font-weight: bold;
-    }
-
-    .hint {
-        margin-top: 10px;
-        font-size: 15px;
-        opacity: .7;
-    }
-
-    @media (max-width: 600px) {
-
-        h1 {
-            font-size: 30px;
-        }
-
-        .game {
-            height: 330px;
-        }
-
-        .target {
-            width: 140px;
-            height: 220px;
-        }
-
-        .perfume {
-            width: 110px;
-            height: 180px;
-        }
-    }
 </style>
 </head>
+
 
 <body>
 
 <div class="container">
 
-    <h1>🎁 اربح العطر</h1>
+    <h1>
+        🎁 اربح العطر
+    </h1>
 
     <div class="subtitle">
-        هل توقيتك سريع بما فيه الكفاية؟ 👀
+        التقط Screenshot في اللحظة المناسبة 👀
     </div>
 
-    <div class="game">
 
-        <div class="target">
+    <div class="game" id="game">
+
+        <div class="target" id="target">
             التقطها هنا!
         </div>
 
         <img
             src="perfume.png"
             class="perfume"
+            id="perfume"
             alt="Perfume"
         >
 
     </div>
 
+
     <div class="instruction">
 
-        📸 خذ <span class="highlight">Screenshot</span>
+        📸 خذ
+        <span class="highlight">
+            Screenshot
+        </span>
+
         عندما تصبح عبوة العطر داخل الإطار تمامًا.
 
         <br>
 
-        إذا نجحت… أرسل لنا الصورة للدخول بالسحب على العطر 🎁
+        هل تستطيع اصطيادها؟ 😏
 
     </div>
 
+
     <div class="hint">
-        لا يمكنك إيقاف الحركة 😉
+        ركّز... العطر سريع 😉
     </div>
 
 </div>
+
+
+
+<script>
+
+const perfume =
+    document.getElementById("perfume");
+
+const game =
+    document.getElementById("game");
+
+const target =
+    document.getElementById("target");
+
+
+let x = -180;
+
+let speed = 3.2;
+
+let escaping = false;
+
+let escapeDirection = -1;
+
+let passedTarget = false;
+
+
+
+function animatePerfume() {
+
+    const gameRect =
+        game.getBoundingClientRect();
+
+    const targetRect =
+        target.getBoundingClientRect();
+
+    const perfumeRect =
+        perfume.getBoundingClientRect();
+
+
+    /* تحريك العطر */
+
+    x += speed;
+
+    perfume.style.left =
+        x + "px";
+
+
+    /*
+    ===========================
+    اكتشاف اقترابه من المربع
+    ===========================
+    */
+
+    const distanceToTarget =
+        targetRect.left -
+        perfumeRect.right;
+
+
+    /*
+    قبل أن يدخل المربع
+    يهرب فجأة
+    */
+
+    if (
+        distanceToTarget < 90 &&
+        distanceToTarget > -10 &&
+        !escaping &&
+        !passedTarget
+    ) {
+
+        escaping = true;
+
+
+        /*
+        اختيار عشوائي:
+        يهرب فوق أو تحت
+        */
+
+        escapeDirection =
+            Math.random() > 0.5
+            ? -1
+            : 1;
+
+
+        perfume.style.transition =
+            "top 0.12s ease-out";
+
+
+        if (escapeDirection === -1) {
+
+            perfume.style.top =
+                "12%";
+
+        } else {
+
+            perfume.style.top =
+                "88%";
+
+        }
+
+    }
+
+
+
+    /*
+    بمجرد تجاوزه المربع
+    يرجع لمساره الطبيعي
+    */
+
+    if (
+        perfumeRect.left >
+        targetRect.right + 30
+    ) {
+
+        passedTarget = true;
+
+        escaping = false;
+
+        perfume.style.transition =
+            "top 0.3s ease";
+
+        perfume.style.top =
+            "50%";
+
+    }
+
+
+
+    /*
+    إذا وصل نهاية الشاشة
+    يرجع من البداية
+    */
+
+    if (
+        x >
+        gameRect.width + 180
+    ) {
+
+        x = -180;
+
+        escaping = false;
+
+        passedTarget = false;
+
+        perfume.style.transition =
+            "none";
+
+        perfume.style.top =
+            "50%";
+
+
+        /*
+        تغيير السرعة قليلاً
+        كل مرة
+        */
+
+        speed =
+            2.7 +
+            Math.random() * 2;
+
+    }
+
+
+    requestAnimationFrame(
+        animatePerfume
+    );
+
+}
+
+
+/*
+بدء اللعبة
+*/
+
+animatePerfume();
+
+</script>
+
 
 </body>
 </html>
