@@ -409,7 +409,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const BARBERS = ['حلاق 1', 'حلاق 2', 'حلاق 3', 'حلاق 4', 'حلاق 5', 'حلاق 6'];
+  // الترتيب مهم: الحركات المحفوظة بتشير للحلاق برقم ترتيبه
+  const BARBERS = ['قصي', 'بشار', 'محمد', 'احمد', 'يوسف', 'المساعد يوسف'];
+  const INITIALS = ['ق', 'ب', 'م', 'أ', 'ي', 'مس'];
   const COLORS = ['#5b8def', '#3ecf8e', '#e8743b', '#b06ad9', '#e05a8a', '#2bb3c0'];
   const BARBER_PCT = 0.60;
   const STORE_KEY = 'salon_entries_v1';
@@ -446,7 +448,7 @@
   function round2(n) { return Math.round(n * 100) / 100; }
   function money(n) { return round2(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function avatar(i, sm) {
-    return `<div class="avatar${sm ? ' sm' : ''}" style="background:${COLORS[i]}">${i + 1}</div>`;
+    return `<div class="avatar${sm ? ' sm' : ''}" style="background:${COLORS[i]}">${INITIALS[i]}</div>`;
   }
   function pad(n) { return String(n).padStart(2, '0'); }
   function dayStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
