@@ -170,6 +170,25 @@
   }
   .quick button:hover { border-color: var(--gold); }
 
+  .pays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pay {
+    border: 2px solid var(--border); background: var(--card-2); color: var(--text); border-radius: 14px;
+    padding: 14px 6px; cursor: pointer; font-size: 17px; font-weight: 800;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; transition: border-color .12s, background .12s;
+  }
+  .pay svg { width: 26px; height: 26px; color: var(--muted); }
+  .pay.sel { border-color: var(--gold); background: rgba(214,168,91,.12); }
+  .pay.sel svg { color: var(--gold-2); }
+  .pay-tag { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; background: var(--card-2); border: 1px solid var(--border); }
+  .pay-break { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .pay-break .stat .label { display: flex; align-items: center; gap: 6px; }
+  .pay-break .stat svg { width: 16px; height: 16px; color: var(--gold-2); }
+  .into {
+    display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 14px;
+    background: rgba(214,168,91,.10); border: 1px solid rgba(214,168,91,.35);
+  }
+  .into svg { width: 22px; height: 22px; color: var(--gold-2); flex: none; }
+  .into .num { margin-inline-start: auto; font-size: 22px; color: var(--gold-2); direction: ltr; }
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
   .split .part { border-radius: 16px; padding: 14px; background: var(--card-2); border: 1px solid var(--border); }
   .split .part .label { color: var(--muted); font-size: 13px; }
@@ -237,6 +256,9 @@
     .stat .value { font-size: 18px; }
     .summary .stat .value { font-size: 16px; }
     .action .t { font-size: 20px; }
+    table { font-size: 13px; }
+    th, td { white-space: normal; padding: 9px 5px; }
+    th { font-size: 12px; }
   }
 
   /* ---------- الطباعة ---------- */
@@ -251,9 +273,11 @@
     .print-brand { font-family: 'Cinzel', serif; letter-spacing: 2px; font-size: 13px; margin-bottom: 4px; direction: ltr; unicode-bidi: isolate; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .print-head p { margin: 0; font-size: 13px; }
-    .summary .stat { background: #fff; border-color: #999; }
+    .summary .stat, .pay-break .stat { background: #fff; border-color: #999; color: #000; }
     .stat .label { color: #444; }
     .stat.gold .value { color: #000; }
+    .pay-tag { background: #fff; border-color: #999; }
+    .pay-break .stat svg { color: #000; }
     .table-wrap { border: 0; overflow: visible; }
     table { font-size: 13px; }
     th, td { white-space: normal; padding: 6px; }
@@ -287,7 +311,7 @@
 
     <button class="action primary hero-action" onclick="go('receive')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
-      <span><span class="t">استلام مبلغ</span><span class="d">سجّل مبلغ وقسّمه 60% للحلاق و 40% للصندوق</span></span>
+      <span><span class="t">استلام مبلغ</span><span class="d">سجّل المبلغ بالصندوق أو كليك أو فيزا، 60% منه للحلاق</span></span>
     </button>
 
     <button class="admin-link" onclick="go('admin')">
@@ -300,13 +324,16 @@
   <section id="admin" class="hidden">
     <div class="stats">
       <div class="stat"><div class="label">دخل اليوم</div><div class="value" id="tTotal">0</div></div>
-      <div class="stat gold"><div class="label">للصندوق اليوم</div><div class="value" id="tShop">0</div></div>
+      <div class="stat gold"><div class="label">ربح المحل اليوم</div><div class="value" id="tShop">0</div></div>
       <div class="stat"><div class="label">عدد الحركات</div><div class="value" id="tCount">0</div></div>
     </div>
 
+    <h3 class="section-title">أرصدة الحسابات اليوم</h3>
+    <div class="pay-break" id="tPays"></div>
+
     <button class="action ghost" onclick="go('statement')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg></span>
-      <span><span class="t">كشف حساب</span><span class="d">كشف الحلاقين وصندوق المحل مع الطباعة</span></span>
+      <span><span class="t">كشف حساب</span><span class="d">كشف الحلاقين وصندوق المحل وكليك وفيزا مع الطباعة</span></span>
     </button>
 
     <div class="card">
@@ -331,9 +358,15 @@
 
       <div class="split">
         <div class="part b"><div class="label" id="bLabel">للحلاق (60%)</div><div class="value" id="bVal">0.00</div></div>
-        <div class="part s"><div class="label">لصندوق المحل (40%)</div><div class="value" id="sVal">0.00</div></div>
+        <div class="part s"><div class="label">ربح المحل (40%)</div><div class="value" id="sVal">0.00</div></div>
       </div>
       <div class="bar"><span></span><span></span></div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">٣. طريقة الدفع</h3>
+      <div class="pays" id="payButtons"></div>
+      <div class="into" id="intoLine"></div>
     </div>
 
     <button class="btn gold" id="saveBtn" onclick="saveEntry()">
@@ -383,8 +416,28 @@
   const QUICK = [5, 10, 15, 20, 30, 50];
   const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 
+  const PAYMENTS = {
+    cash: { name: 'نقداً', account: 'صندوق المحل', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>' },
+    cliq: { name: 'كليك', account: 'كليك', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/><path d="M9.5 10.5l2 2 3.5-4"/></svg>' },
+    visa: { name: 'فيزا', account: 'فيزا', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>' }
+  };
+  const DEFAULT_PAY = 'cash';
+  // الحركات القديمة بدون طريقة دفع كانت كلها على صندوق المحل
+  function payOf(e) { return PAYMENTS[e.pay] ? e.pay : DEFAULT_PAY; }
+  function payName(e) { return PAYMENTS[payOf(e)].name; }
+  function accountName(k) { return PAYMENTS[k].account; }
+  // المبلغ كامل بينزل بالحساب حسب طريقة الدفع
+  function accountsBreakdown(list) {
+    const sums = {};
+    Object.keys(PAYMENTS).forEach(k => sums[k] = 0);
+    list.forEach(e => { sums[payOf(e)] += e.amount; });
+    return Object.keys(PAYMENTS).map(k => `
+      <div class="stat"><div class="label">${PAYMENTS[k].icon}${accountName(k)}</div><div class="value">${money(sums[k])}</div></div>`).join('');
+  }
+
   let selectedBarber = null;
-  let statementWho = 'shop';
+  let selectedPay = DEFAULT_PAY;
+  let statementWho = 'cash';
 
   function load() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { return []; }
@@ -446,6 +499,7 @@
     document.getElementById('tTotal').textContent = money(total);
     document.getElementById('tShop').textContent = money(shop);
     document.getElementById('tCount').textContent = list.length;
+    document.getElementById('tPays').innerHTML = accountsBreakdown(list);
 
     const rows = per.map((p, i) => p.count ? `
       <div class="item">
@@ -468,6 +522,11 @@
     updatePreview();
     document.getElementById('amount').focus();
   }
+  function buildPayButtons() {
+    document.getElementById('payButtons').innerHTML = Object.keys(PAYMENTS).map(k => `
+      <button class="pay${selectedPay === k ? ' sel' : ''}" onclick="pickPay('${k}')">${PAYMENTS[k].icon}${PAYMENTS[k].name}</button>`).join('');
+  }
+  function pickPay(k) { selectedPay = k; buildPayButtons(); updatePreview(); }
   function buildQuick() {
     document.getElementById('quick').innerHTML = QUICK.map(v =>
       `<button onclick="setAmount(${v})">${v}</button>`).join('');
@@ -479,10 +538,12 @@
 
   function resetReceive() {
     selectedBarber = null;
+    selectedPay = DEFAULT_PAY;
     document.getElementById('amount').value = '';
     document.getElementById('err').textContent = '';
     buildBarberButtons();
     buildQuick();
+    buildPayButtons();
     updatePreview();
   }
 
@@ -493,6 +554,8 @@
     document.getElementById('sVal').textContent = money(amount - b);
     document.getElementById('bLabel').textContent =
       (selectedBarber === null ? 'للحلاق' : 'لـ ' + BARBERS[selectedBarber]) + ' (60%)';
+    document.getElementById('intoLine').innerHTML =
+      `${PAYMENTS[selectedPay].icon}<span>ينزل كامل بـ <b>${accountName(selectedPay)}</b></span><b class="num">${money(amount)}</b>`;
     document.getElementById('saveBtn').disabled = selectedBarber === null || !(amount > 0);
     document.getElementById('err').textContent = '';
   }
@@ -510,19 +573,20 @@
       barber: selectedBarber,
       amount: round2(amount),
       barberShare,
-      shopShare: round2(amount - barberShare)
+      shopShare: round2(amount - barberShare),
+      pay: selectedPay
     };
     const list = load();
     list.push(entry);
     save(list);
 
-    toast(`✓ تم الحفظ: ${money(entry.barberShare)} لـ ${BARBERS[entry.barber]} و ${money(entry.shopShare)} للصندوق`);
+    toast(`✓ نزل ${money(entry.amount)} بـ ${accountName(entry.pay)}، منها ${money(entry.barberShare)} لـ ${BARBERS[entry.barber]}`);
     resetReceive();
   }
 
   // ---------- كشف الحساب ----------
   function buildTabs() {
-    const opts = [['shop', 'صندوق المحل']].concat(BARBERS.map((n, i) => [String(i), n]));
+    const opts = Object.keys(PAYMENTS).map(k => [k, accountName(k)]).concat(BARBERS.map((n, i) => [String(i), n]));
     document.getElementById('tabs').innerHTML = opts.map(([v, n]) =>
       `<button class="tab${statementWho === v ? ' active' : ''}" onclick="pickWho('${v}')">${n}</button>`).join('');
   }
@@ -544,15 +608,15 @@
     const who = statementWho;
     const from = document.getElementById('from').value;
     const to = document.getElementById('to').value;
-    const isShop = who === 'shop';
+    const isShop = who in PAYMENTS;
 
     let list = load().filter(e => {
       const day = localDay(e.date);
       return (!from || day >= from) && (!to || day <= to);
     });
-    if (!isShop) list = list.filter(e => e.barber === Number(who));
+    list = isShop ? list.filter(e => payOf(e) === who) : list.filter(e => e.barber === Number(who));
 
-    const title = isShop ? 'كشف حساب صندوق المحل' : 'كشف حساب ' + BARBERS[Number(who)];
+    const title = 'كشف حساب ' + (isShop ? accountName(who) : BARBERS[Number(who)]);
     const range = (from || to) ? `الفترة: من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'الفترة: كل الحركات';
     document.getElementById('printHead').innerHTML =
       `<img src="logo.jpg" alt="" class="print-logo"><h2>${title}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>${range} · تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
@@ -562,37 +626,40 @@
       return;
     }
 
-    let totalAmount = 0, totalShare = 0;
-    const rows = list.map((e, i) => {
-      const share = isShop ? e.shopShare : e.barberShare;
-      totalAmount += e.amount; totalShare += share;
-      return `<tr>
-        <td>${i + 1}</td>
-        <td>${fmtDate(e.date)}</td>
-        ${isShop ? `<td>${BARBERS[e.barber]}</td>` : ''}
-        <td class="num">${money(e.amount)}</td>
-        <td class="num">${money(share)}</td>
-        <td class="no-print"><button class="del" title="حذف" onclick="deleteEntry(${e.id})">${TRASH}</button></td>
-      </tr>`;
-    }).join('');
+    let totalAmount = 0, totalBarber = 0, totalShop = 0;
+    list.forEach(e => { totalAmount += e.amount; totalBarber += e.barberShare; totalShop += e.shopShare; });
+    const del = e => `<td class="no-print"><button class="del" title="حذف" onclick="deleteEntry(${e.id})">${TRASH}</button></td>`;
+    const stat = (label, value, gold) =>
+      `<div class="stat${gold ? ' gold' : ''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
 
-    const pct = isShop ? '40%' : '60%';
+    let summary, head, rows, foot;
+    if (isShop) {
+      // حساب (صندوق المحل / كليك / فيزا): المبلغ كامل بينزل بالحساب
+      summary = stat('رصيد الحساب', money(totalAmount), true) + stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
+      head = '<th>#</th><th>التاريخ</th><th>الحلاق</th><th>المبلغ</th><th>للحلاق (60%)</th><th>للمحل (40%)</th>';
+      rows = list.map((e, i) => `<tr>
+        <td>${i + 1}</td><td>${fmtDate(e.date)}</td><td>${BARBERS[e.barber]}</td>
+        <td class="num">${money(e.amount)}</td><td class="num">${money(e.barberShare)}</td><td class="num">${money(e.shopShare)}</td>${del(e)}
+      </tr>`).join('');
+      foot = `<td class="num">${money(totalAmount)}</td><td class="num">${money(totalBarber)}</td><td class="num">${money(totalShop)}</td>`;
+    } else {
+      summary = stat('عدد الحركات', list.length) + stat('إجمالي المبالغ', money(totalAmount)) + stat('الرصيد (60%)', money(totalBarber), true);
+      head = '<th>#</th><th>التاريخ</th><th>الدفع</th><th>المبلغ الكامل</th><th>النصيب (60%)</th>';
+      rows = list.map((e, i) => `<tr>
+        <td>${i + 1}</td><td>${fmtDate(e.date)}</td><td><span class="pay-tag">${payName(e)}</span></td>
+        <td class="num">${money(e.amount)}</td><td class="num">${money(e.barberShare)}</td>${del(e)}
+      </tr>`).join('');
+      foot = `<td class="num">${money(totalAmount)}</td><td class="num">${money(totalBarber)}</td>`;
+    }
+
     document.getElementById('report').innerHTML = `
-      <div class="summary">
-        <div class="stat"><div class="label">عدد الحركات</div><div class="value">${list.length}</div></div>
-        <div class="stat"><div class="label">إجمالي المبالغ</div><div class="value">${money(totalAmount)}</div></div>
-        <div class="stat gold"><div class="label">الرصيد (${pct})</div><div class="value">${money(totalShare)}</div></div>
-      </div>
+      <div class="summary">${summary}</div>
       <div class="table-wrap">
         <table>
-          <thead><tr>
-            <th>#</th><th>التاريخ</th>${isShop ? '<th>الحلاق</th>' : ''}
-            <th>المبلغ الكامل</th><th>النصيب (${pct})</th><th class="no-print"></th>
-          </tr></thead>
+          <thead><tr>${head}<th class="no-print"></th></tr></thead>
           <tbody>${rows}</tbody>
           <tfoot><tr>
-            <td colspan="${isShop ? 3 : 2}">المجموع</td>
-            <td class="num">${money(totalAmount)}</td><td class="num">${money(totalShare)}</td><td class="no-print"></td>
+            <td colspan="3">المجموع (${list.length} حركة)</td>${foot}<td class="no-print"></td>
           </tr></tfoot>
         </table>
       </div>`;
