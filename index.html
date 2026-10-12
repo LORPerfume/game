@@ -302,7 +302,7 @@
 
     <button class="action primary hero-action" onclick="go('receive')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
-      <span><span class="t">استلام مبلغ</span><span class="d">سجّل مبلغ وقسّمه 60% للحلاق و 40% للصندوق</span></span>
+      <span><span class="t">استلام مبلغ</span><span class="d">سجّل مبلغ وقسّمه 60% للحلاق و 40% لحساب المحل</span></span>
     </button>
 
     <button class="admin-link" onclick="go('admin')">
@@ -315,16 +315,16 @@
   <section id="admin" class="hidden">
     <div class="stats">
       <div class="stat"><div class="label">دخل اليوم</div><div class="value" id="tTotal">0</div></div>
-      <div class="stat gold"><div class="label">للصندوق اليوم</div><div class="value" id="tShop">0</div></div>
+      <div class="stat gold"><div class="label">حصة المحل اليوم</div><div class="value" id="tShop">0</div></div>
       <div class="stat"><div class="label">عدد الحركات</div><div class="value" id="tCount">0</div></div>
     </div>
 
-    <h3 class="section-title">حسب طريقة الدفع اليوم</h3>
+    <h3 class="section-title">حسابات المحل اليوم (40%)</h3>
     <div class="pay-break" id="tPays"></div>
 
     <button class="action ghost" onclick="go('statement')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg></span>
-      <span><span class="t">كشف حساب</span><span class="d">كشف الحلاقين وصندوق المحل مع الطباعة</span></span>
+      <span><span class="t">كشف حساب</span><span class="d">كشف الحلاقين وصندوق المحل وكليك وفيزا مع الطباعة</span></span>
     </button>
 
     <div class="card">
@@ -349,7 +349,7 @@
 
       <div class="split">
         <div class="part b"><div class="label" id="bLabel">للحلاق (60%)</div><div class="value" id="bVal">0.00</div></div>
-        <div class="part s"><div class="label">لصندوق المحل (40%)</div><div class="value" id="sVal">0.00</div></div>
+        <div class="part s"><div class="label" id="sLabel">لصندوق المحل (40%)</div><div class="value" id="sVal">0.00</div></div>
       </div>
       <div class="bar"><span></span><span></span></div>
     </div>
@@ -407,23 +407,27 @@
   const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 
   const PAYMENTS = {
-    cash: { name: 'نقداً', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>' },
-    cliq: { name: 'كليك', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/><path d="M9.5 10.5l2 2 3.5-4"/></svg>' },
-    visa: { name: 'فيزا', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>' }
+    cash: { name: 'نقداً', account: 'صندوق المحل', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>' },
+    cliq: { name: 'كليك', account: 'كليك', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/><path d="M9.5 10.5l2 2 3.5-4"/></svg>' },
+    visa: { name: 'فيزا', account: 'فيزا', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>' }
   };
   const DEFAULT_PAY = 'cash';
-  function payName(e) { return PAYMENTS[e.pay] ? PAYMENTS[e.pay].name : '—'; }
-  function payBreakdown(list, field) {
+  // الحركات القديمة بدون طريقة دفع كانت كلها على صندوق المحل
+  function payOf(e) { return PAYMENTS[e.pay] ? e.pay : DEFAULT_PAY; }
+  function payName(e) { return PAYMENTS[payOf(e)].name; }
+  function accountName(k) { return PAYMENTS[k].account; }
+  // مجموع حصة المحل (40%) في كل حساب حسب طريقة الدفع
+  function accountsBreakdown(list) {
     const sums = {};
     Object.keys(PAYMENTS).forEach(k => sums[k] = 0);
-    list.forEach(e => { if (e.pay in sums) sums[e.pay] += e[field]; });
+    list.forEach(e => { sums[payOf(e)] += e.shopShare; });
     return Object.keys(PAYMENTS).map(k => `
-      <div class="stat"><div class="label">${PAYMENTS[k].icon}${PAYMENTS[k].name}</div><div class="value">${money(sums[k])}</div></div>`).join('');
+      <div class="stat"><div class="label">${PAYMENTS[k].icon}${accountName(k)}</div><div class="value">${money(sums[k])}</div></div>`).join('');
   }
 
   let selectedBarber = null;
   let selectedPay = DEFAULT_PAY;
-  let statementWho = 'shop';
+  let statementWho = 'cash';
 
   function load() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { return []; }
@@ -485,7 +489,7 @@
     document.getElementById('tTotal').textContent = money(total);
     document.getElementById('tShop').textContent = money(shop);
     document.getElementById('tCount').textContent = list.length;
-    document.getElementById('tPays').innerHTML = payBreakdown(list, 'amount');
+    document.getElementById('tPays').innerHTML = accountsBreakdown(list);
 
     const rows = per.map((p, i) => p.count ? `
       <div class="item">
@@ -512,7 +516,7 @@
     document.getElementById('payButtons').innerHTML = Object.keys(PAYMENTS).map(k => `
       <button class="pay${selectedPay === k ? ' sel' : ''}" onclick="pickPay('${k}')">${PAYMENTS[k].icon}${PAYMENTS[k].name}</button>`).join('');
   }
-  function pickPay(k) { selectedPay = k; buildPayButtons(); }
+  function pickPay(k) { selectedPay = k; buildPayButtons(); updatePreview(); }
   function buildQuick() {
     document.getElementById('quick').innerHTML = QUICK.map(v =>
       `<button onclick="setAmount(${v})">${v}</button>`).join('');
@@ -540,6 +544,8 @@
     document.getElementById('sVal').textContent = money(amount - b);
     document.getElementById('bLabel').textContent =
       (selectedBarber === null ? 'للحلاق' : 'لـ ' + BARBERS[selectedBarber]) + ' (60%)';
+    document.getElementById('sLabel').textContent =
+      (selectedPay === 'cash' ? 'لصندوق المحل' : 'لحساب ' + accountName(selectedPay)) + ' (40%)';
     document.getElementById('saveBtn').disabled = selectedBarber === null || !(amount > 0);
     document.getElementById('err').textContent = '';
   }
@@ -564,13 +570,13 @@
     list.push(entry);
     save(list);
 
-    toast(`✓ تم الحفظ: ${money(entry.barberShare)} لـ ${BARBERS[entry.barber]} و ${money(entry.shopShare)} للصندوق (${payName(entry)})`);
+    toast(`✓ تم الحفظ: ${money(entry.barberShare)} لـ ${BARBERS[entry.barber]} و ${money(entry.shopShare)} لـ ${accountName(entry.pay)}`);
     resetReceive();
   }
 
   // ---------- كشف الحساب ----------
   function buildTabs() {
-    const opts = [['shop', 'صندوق المحل']].concat(BARBERS.map((n, i) => [String(i), n]));
+    const opts = Object.keys(PAYMENTS).map(k => [k, accountName(k)]).concat(BARBERS.map((n, i) => [String(i), n]));
     document.getElementById('tabs').innerHTML = opts.map(([v, n]) =>
       `<button class="tab${statementWho === v ? ' active' : ''}" onclick="pickWho('${v}')">${n}</button>`).join('');
   }
@@ -592,15 +598,15 @@
     const who = statementWho;
     const from = document.getElementById('from').value;
     const to = document.getElementById('to').value;
-    const isShop = who === 'shop';
+    const isShop = who in PAYMENTS;
 
     let list = load().filter(e => {
       const day = localDay(e.date);
       return (!from || day >= from) && (!to || day <= to);
     });
-    if (!isShop) list = list.filter(e => e.barber === Number(who));
+    list = isShop ? list.filter(e => payOf(e) === who) : list.filter(e => e.barber === Number(who));
 
-    const title = isShop ? 'كشف حساب صندوق المحل' : 'كشف حساب ' + BARBERS[Number(who)];
+    const title = 'كشف حساب ' + (isShop ? accountName(who) : BARBERS[Number(who)]);
     const range = (from || to) ? `الفترة: من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'الفترة: كل الحركات';
     document.getElementById('printHead').innerHTML =
       `<img src="logo.jpg" alt="" class="print-logo"><h2>${title}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>${range} · تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
@@ -618,7 +624,7 @@
         <td>${i + 1}</td>
         <td>${fmtDate(e.date)}</td>
         ${isShop ? `<td>${BARBERS[e.barber]}</td>` : ''}
-        <td><span class="pay-tag">${payName(e)}</span></td>
+        ${isShop ? '' : `<td><span class="pay-tag">${payName(e)}</span></td>`}
         <td class="num">${money(e.amount)}</td>
         <td class="num">${money(share)}</td>
         <td class="no-print"><button class="del" title="حذف" onclick="deleteEntry(${e.id})">${TRASH}</button></td>
@@ -632,16 +638,15 @@
         <div class="stat"><div class="label">إجمالي المبالغ</div><div class="value">${money(totalAmount)}</div></div>
         <div class="stat gold"><div class="label">الرصيد (${pct})</div><div class="value">${money(totalShare)}</div></div>
       </div>
-      <div class="pay-break">${payBreakdown(list, 'amount')}</div>
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>#</th><th>التاريخ</th>${isShop ? '<th>الحلاق</th>' : ''}<th>الدفع</th>
+            <th>#</th><th>التاريخ</th>${isShop ? '<th>الحلاق</th>' : '<th>الدفع</th>'}
             <th>المبلغ الكامل</th><th>النصيب (${pct})</th><th class="no-print"></th>
           </tr></thead>
           <tbody>${rows}</tbody>
           <tfoot><tr>
-            <td colspan="${isShop ? 4 : 3}">المجموع</td>
+            <td colspan="3">المجموع</td>
             <td class="num">${money(totalAmount)}</td><td class="num">${money(totalShare)}</td><td class="no-print"></td>
           </tr></tfoot>
         </table>
