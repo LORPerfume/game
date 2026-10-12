@@ -3,166 +3,444 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14161b">
 <title>صندوق الصالون</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f4f5f7; --card:#fff; --text:#222; --muted:#666; --main:#1f6feb; --ok:#1a7f37; --danger:#c62828; --border:#ddd; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: Tahoma, Arial, sans-serif; background:var(--bg); color:var(--text); }
-  .wrap { max-width:720px; margin:0 auto; padding:16px; }
-  h1, h2 { text-align:center; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
-  .big-btn { display:block; width:100%; padding:28px; font-size:26px; font-weight:bold; border:0; border-radius:12px; background:var(--main); color:#fff; cursor:pointer; margin-bottom:14px; }
-  .big-btn.secondary { background:#444; font-size:20px; padding:18px; }
-  button { font-family:inherit; }
-  .btn { padding:12px 18px; font-size:17px; border:0; border-radius:8px; background:var(--main); color:#fff; cursor:pointer; }
-  .btn.gray { background:#777; }
-  .btn.ok { background:var(--ok); }
-  .btn.small { padding:6px 10px; font-size:14px; }
-  .btn.danger { background:var(--danger); }
-  label { display:block; font-weight:bold; margin:14px 0 8px; }
-  .barbers { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .barbers button { padding:18px 6px; font-size:18px; border:2px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
-  .barbers button.sel { border-color:var(--main); background:#e7f0ff; font-weight:bold; }
-  input, select { width:100%; padding:12px; font-size:20px; border:1px solid var(--border); border-radius:8px; font-family:inherit; }
-  .preview { margin-top:14px; padding:12px; background:#f7f7f7; border-radius:8px; line-height:1.9; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
-  .row > * { flex:1; }
-  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:15px; }
-  th, td { border:1px solid var(--border); padding:8px; text-align:center; }
-  th { background:#eee; }
-  tfoot td { font-weight:bold; background:#fafafa; }
-  .msg { text-align:center; color:var(--ok); font-weight:bold; min-height:24px; margin-top:10px; }
-  .muted { color:var(--muted); text-align:center; }
-  .filters { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
-  .filters input, .filters select { font-size:16px; }
-  .print-head { display:none; }
-  .hidden { display:none !important; }
-  @media (max-width:480px) { .barbers { grid-template-columns:repeat(2,1fr); } .filters { grid-template-columns:1fr; } }
+  :root {
+    --bg: #14161b;
+    --bg-2: #1b1e25;
+    --card: #20242c;
+    --card-2: #282d37;
+    --border: #323846;
+    --text: #f2f3f5;
+    --muted: #9aa1ad;
+    --gold: #d6a85b;
+    --gold-2: #f0c97f;
+    --gold-ink: #241a08;
+    --green: #3ecf8e;
+    --red: #ef5b5b;
+    --radius: 18px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    font-family: 'Cairo', Tahoma, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 100% -10%, #2a2416 0%, transparent 60%), var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    min-height: 100vh;
+  }
+  button, input, select { font-family: inherit; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; }
+  .hidden { display: none !important; }
+
+  /* ---------- الهيدر ---------- */
+  .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .logo {
+    width: 52px; height: 52px; border-radius: 16px; flex: none;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--gold-2), var(--gold));
+    color: var(--gold-ink); box-shadow: var(--shadow);
+  }
+  .logo svg { width: 28px; height: 28px; }
+  .topbar h1 { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.2; }
+  .topbar .sub { color: var(--muted); font-size: 14px; }
+  .back {
+    margin-inline-start: auto; border: 1px solid var(--border); background: var(--card);
+    color: var(--text); border-radius: 12px; padding: 8px 14px; font-size: 15px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .back:hover { border-color: var(--gold); }
+
+  /* ---------- بطاقات ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow);
+  }
+  .section-title { font-size: 15px; color: var(--muted); font-weight: 700; margin: 0 0 12px; }
+
+  /* ---------- الصفحة الرئيسية ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
+  .stat .label { color: var(--muted); font-size: 13px; }
+  .stat .value { font-size: 22px; font-weight: 800; margin-top: 2px; direction: ltr; text-align: right; }
+  .stat.gold .value { color: var(--gold-2); }
+
+  .action {
+    width: 100%; display: flex; align-items: center; gap: 16px; text-align: right;
+    border: 0; border-radius: 22px; padding: 22px; cursor: pointer; margin-bottom: 14px;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .action:active { transform: scale(.98); }
+  .action .ic { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; flex: none; }
+  .action .ic svg { width: 32px; height: 32px; }
+  .action .t { font-size: 24px; font-weight: 800; display: block; }
+  .action .d { font-size: 14px; opacity: .8; }
+  .action.primary { background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: var(--gold-ink); box-shadow: 0 14px 34px rgba(214,168,91,.25); }
+  .action.primary .ic { background: rgba(36,26,8,.12); }
+  .action.ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .action.ghost .ic { background: var(--card-2); color: var(--gold-2); }
+
+  .today-list .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+  .today-list .item:last-child { border-bottom: 0; }
+  .today-list .who { display: flex; align-items: center; gap: 10px; }
+  .today-list .amt { font-weight: 700; direction: ltr; }
+  .empty { color: var(--muted); text-align: center; padding: 14px 0; }
+
+  /* ---------- اختيار الحلاق ---------- */
+  .barbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .barber {
+    position: relative; border: 2px solid var(--border); background: var(--card-2); color: var(--text);
+    border-radius: 16px; padding: 16px 8px 12px; cursor: pointer; text-align: center;
+    transition: border-color .12s, background .12s, transform .12s;
+  }
+  .barber:active { transform: scale(.97); }
+  .barber .name { font-size: 16px; font-weight: 700; margin-top: 8px; }
+  .barber.sel { border-color: var(--gold); background: rgba(214,168,91,.12); }
+  .barber.sel::after {
+    content: '✓'; position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gold); color: var(--gold-ink); font-size: 13px; font-weight: 800; display: grid; place-items: center;
+  }
+  .avatar {
+    width: 46px; height: 46px; border-radius: 50%; margin: 0 auto; display: grid; place-items: center;
+    font-weight: 800; font-size: 18px; color: #fff;
+  }
+  .avatar.sm { width: 34px; height: 34px; font-size: 14px; margin: 0; }
+
+  /* ---------- المبلغ ---------- */
+  .amount-box {
+    display: flex; align-items: center; gap: 10px; background: var(--bg-2); border: 2px solid var(--border);
+    border-radius: 16px; padding: 6px 16px; transition: border-color .12s;
+  }
+  .amount-box:focus-within { border-color: var(--gold); }
+  .amount-box input {
+    flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--text);
+    font-size: 40px; font-weight: 800; padding: 6px 0; direction: ltr; text-align: right;
+  }
+  .amount-box input::-webkit-outer-spin-button, .amount-box input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .amount-box input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  .amount-box .cur { color: var(--muted); font-weight: 700; }
+  .quick { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .quick button {
+    flex: 1; min-width: 60px; padding: 10px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card-2); color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .quick button:hover { border-color: var(--gold); }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .split .part { border-radius: 16px; padding: 14px; background: var(--card-2); border: 1px solid var(--border); }
+  .split .part .label { color: var(--muted); font-size: 13px; }
+  .split .part .value { font-size: 26px; font-weight: 800; direction: ltr; text-align: right; }
+  .split .part.b .value { color: var(--green); }
+  .split .part.s .value { color: var(--gold-2); }
+  .bar { height: 8px; border-radius: 99px; overflow: hidden; display: flex; margin-top: 12px; background: var(--card-2); }
+  .bar span:first-child { width: 60%; background: var(--green); }
+  .bar span:last-child { width: 40%; background: var(--gold); }
+
+  .btn {
+    border: 0; border-radius: 14px; padding: 16px; font-size: 18px; font-weight: 800; cursor: pointer; width: 100%;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn.gold { background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: var(--gold-ink); }
+  .btn.gold:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.dark { background: var(--card-2); color: var(--text); border: 1px solid var(--border); }
+  .btn svg { width: 20px; height: 20px; }
+  .err { color: var(--red); text-align: center; min-height: 22px; margin-top: 10px; font-weight: 600; }
+
+  /* ---------- كشف الحساب ---------- */
+  .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: none; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    border-radius: 99px; padding: 8px 16px; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .tab.active { background: var(--gold); border-color: var(--gold); color: var(--gold-ink); }
+  .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dates label { display: block; color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .dates input {
+    width: 100%; background: var(--bg-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px; font-size: 15px; color-scheme: dark;
+  }
+  .chips { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .chips button { border: 1px solid var(--border); background: var(--card-2); color: var(--muted); border-radius: 99px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  .chips button:hover { color: var(--text); border-color: var(--gold); }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { padding: 11px 10px; text-align: center; white-space: nowrap; }
+  th { background: var(--card-2); color: var(--muted); font-weight: 700; font-size: 13px; }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,.02); }
+  tbody td { border-top: 1px solid var(--border); }
+  td.num { direction: ltr; font-weight: 700; }
+  tfoot td { border-top: 2px solid var(--gold); font-weight: 800; background: var(--card-2); }
+  .del { background: transparent; border: 0; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 8px; }
+  .del:hover { color: var(--red); background: rgba(239,91,91,.1); }
+  .del svg { width: 18px; height: 18px; }
+
+  .print-head { display: none; }
+
+  /* ---------- إشعار ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 140%);
+    background: var(--green); color: #062014; font-weight: 700; padding: 14px 20px; border-radius: 14px;
+    box-shadow: var(--shadow); transition: transform .25s ease; z-index: 10; max-width: calc(100% - 32px); text-align: center;
+  }
+  .toast.show { transform: translate(-50%, 0); }
+
+  @media (max-width: 520px) {
+    .barbers { grid-template-columns: repeat(2, 1fr); }
+    .stat .value { font-size: 18px; }
+    .summary .stat .value { font-size: 16px; }
+    .action .t { font-size: 20px; }
+  }
+
+  /* ---------- الطباعة ---------- */
   @media print {
-    body { background:#fff; }
-    .no-print { display:none !important; }
-    .card { border:0; padding:0; }
-    .print-head { display:block; text-align:center; }
+    @page { margin: 14mm; }
+    body { background: #fff; color: #000; }
+    .no-print, .topbar, .toast { display: none !important; }
+    .card { box-shadow: none; border: 0; padding: 0; background: #fff; }
+    .print-head { display: block; text-align: center; margin-bottom: 14px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+    .print-head h2 { margin: 0 0 4px; }
+    .print-head p { margin: 0; font-size: 13px; }
+    .summary .stat { background: #fff; border-color: #999; }
+    .stat .label { color: #444; }
+    .stat.gold .value { color: #000; }
+    .table-wrap { border: 0; overflow: visible; }
+    table { font-size: 13px; }
+    th, td { white-space: normal; padding: 6px; }
+    th { background: #eee; color: #000; }
+    th, td { border: 1px solid #999 !important; }
+    tfoot td { background: #f3f3f3; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <!-- الهيدر -->
+  <header class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+    </div>
+    <div>
+      <h1 id="pageTitle">صندوق الصالون</h1>
+      <div class="sub" id="pageSub"></div>
+    </div>
+    <button class="back hidden" id="backBtn" onclick="go('home')">رجوع ←</button>
+  </header>
+
   <!-- الصفحة الرئيسية -->
   <section id="home">
-    <h1>صندوق الصالون</h1>
-    <button class="big-btn" onclick="go('receive')">استلام مبلغ</button>
-    <button class="big-btn secondary" onclick="go('statement')">كشف حساب / طباعة</button>
+    <div class="stats">
+      <div class="stat"><div class="label">دخل اليوم</div><div class="value" id="tTotal">0</div></div>
+      <div class="stat gold"><div class="label">للصندوق اليوم</div><div class="value" id="tShop">0</div></div>
+      <div class="stat"><div class="label">عدد الحركات</div><div class="value" id="tCount">0</div></div>
+    </div>
+
+    <button class="action primary" onclick="go('receive')">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+      <span><span class="t">استلام مبلغ</span><span class="d">سجّل مبلغ وقسّمه 60% للحلاق و 40% للصندوق</span></span>
+    </button>
+
+    <button class="action ghost" onclick="go('statement')">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg></span>
+      <span><span class="t">كشف حساب</span><span class="d">كشف الحلاقين وصندوق المحل مع الطباعة</span></span>
+    </button>
+
+    <div class="card">
+      <h3 class="section-title">حساب الحلاقين اليوم</h3>
+      <div class="today-list" id="todayList"></div>
+    </div>
   </section>
 
   <!-- صفحة استلام مبلغ -->
   <section id="receive" class="hidden">
-    <h2>استلام مبلغ</h2>
     <div class="card">
-      <label>اختر الحلاق</label>
+      <h3 class="section-title">١. اختر الحلاق</h3>
       <div class="barbers" id="barberButtons"></div>
-
-      <label for="amount">قيمة المبلغ</label>
-      <input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="updatePreview()">
-
-      <div class="preview" id="preview"></div>
-
-      <div class="row">
-        <button class="btn ok" onclick="saveEntry()">حفظ</button>
-        <button class="btn gray" onclick="go('home')">رجوع</button>
-      </div>
-      <div class="msg" id="msg"></div>
     </div>
+
+    <div class="card">
+      <h3 class="section-title">٢. قيمة المبلغ</h3>
+      <div class="amount-box">
+        <input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="updatePreview()">
+      </div>
+      <div class="quick" id="quick"></div>
+
+      <div class="split">
+        <div class="part b"><div class="label" id="bLabel">للحلاق (60%)</div><div class="value" id="bVal">0.00</div></div>
+        <div class="part s"><div class="label">لصندوق المحل (40%)</div><div class="value" id="sVal">0.00</div></div>
+      </div>
+      <div class="bar"><span></span><span></span></div>
+    </div>
+
+    <button class="btn gold" id="saveBtn" onclick="saveEntry()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      حفظ المبلغ
+    </button>
+    <div class="err" id="err"></div>
   </section>
 
   <!-- صفحة كشف الحساب -->
   <section id="statement" class="hidden">
-    <h2 class="no-print">كشف حساب</h2>
-    <div class="card">
-      <div class="filters no-print">
-        <div>
-          <label for="who">الحساب</label>
-          <select id="who" onchange="renderStatement()"></select>
-        </div>
-        <div>
-          <label for="from">من تاريخ</label>
-          <input id="from" type="date" onchange="renderStatement()">
-        </div>
-        <div>
-          <label for="to">إلى تاريخ</label>
-          <input id="to" type="date" onchange="renderStatement()">
-        </div>
+    <div class="tabs no-print" id="tabs"></div>
+
+    <div class="card no-print">
+      <div class="dates">
+        <div><label for="from">من تاريخ</label><input id="from" type="date" onchange="renderStatement()"></div>
+        <div><label for="to">إلى تاريخ</label><input id="to" type="date" onchange="renderStatement()"></div>
       </div>
-
-      <div class="print-head" id="printHead"></div>
-      <div id="report"></div>
-
-      <div class="row no-print">
-        <button class="btn" onclick="window.print()">طباعة</button>
-        <button class="btn gray" onclick="go('home')">رجوع</button>
+      <div class="chips">
+        <button onclick="setRange('today')">اليوم</button>
+        <button onclick="setRange('week')">آخر 7 أيام</button>
+        <button onclick="setRange('month')">هذا الشهر</button>
+        <button onclick="setRange('all')">الكل</button>
       </div>
     </div>
+
+    <div class="card">
+      <div class="print-head" id="printHead"></div>
+      <div id="report"></div>
+    </div>
+
+    <button class="btn gold no-print" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      طباعة الكشف
+    </button>
   </section>
 
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
   const BARBERS = ['حلاق 1', 'حلاق 2', 'حلاق 3', 'حلاق 4', 'حلاق 5', 'حلاق 6'];
+  const COLORS = ['#5b8def', '#3ecf8e', '#e8743b', '#b06ad9', '#e05a8a', '#2bb3c0'];
   const BARBER_PCT = 0.60;
-  const SHOP_PCT = 0.40;
   const STORE_KEY = 'salon_entries_v1';
+  const QUICK = [5, 10, 15, 20, 30, 50];
+  const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+
   let selectedBarber = null;
+  let statementWho = 'shop';
 
   function load() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { return []; }
   }
   function save(list) { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
-  function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
   function round2(n) { return Math.round(n * 100) / 100; }
+  function money(n) { return round2(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function avatar(i, sm) {
+    return `<div class="avatar${sm ? ' sm' : ''}" style="background:${COLORS[i]}">${i + 1}</div>`;
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function dayStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function localDay(iso) { return dayStr(new Date(iso)); }
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function toast(text) {
+    const t = document.getElementById('toast');
+    t.textContent = text;
+    t.classList.add('show');
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  const PAGES = {
+    home: ['صندوق الصالون', () => new Date().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })],
+    receive: ['استلام مبلغ', () => 'اختر الحلاق واكتب المبلغ'],
+    statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع']
+  };
 
   function go(page) {
-    ['home', 'receive', 'statement'].forEach(id =>
-      document.getElementById(id).classList.toggle('hidden', id !== page));
+    Object.keys(PAGES).forEach(id => document.getElementById(id).classList.toggle('hidden', id !== page));
+    document.getElementById('pageTitle').textContent = PAGES[page][0];
+    document.getElementById('pageSub').textContent = PAGES[page][1]();
+    document.getElementById('backBtn').classList.toggle('hidden', page === 'home');
+    window.scrollTo(0, 0);
+    if (page === 'home') renderHome();
     if (page === 'receive') resetReceive();
     if (page === 'statement') renderStatement();
   }
 
+  // ---------- الرئيسية ----------
+  function renderHome() {
+    const today = dayStr(new Date());
+    const list = load().filter(e => localDay(e.date) === today);
+    let total = 0, shop = 0;
+    const per = BARBERS.map(() => ({ share: 0, count: 0 }));
+    list.forEach(e => {
+      total += e.amount; shop += e.shopShare;
+      per[e.barber].share += e.barberShare; per[e.barber].count++;
+    });
+    document.getElementById('tTotal').textContent = money(total);
+    document.getElementById('tShop').textContent = money(shop);
+    document.getElementById('tCount').textContent = list.length;
+
+    const rows = per.map((p, i) => p.count ? `
+      <div class="item">
+        <div class="who">${avatar(i, true)}<div><b>${BARBERS[i]}</b><div class="sub" style="color:var(--muted);font-size:13px">${p.count} حركة</div></div></div>
+        <div class="amt">${money(p.share)}</div>
+      </div>` : '').join('');
+    document.getElementById('todayList').innerHTML = rows || '<div class="empty">لا توجد حركات اليوم بعد</div>';
+  }
+
   // ---------- استلام مبلغ ----------
   function buildBarberButtons() {
-    const box = document.getElementById('barberButtons');
-    box.innerHTML = '';
-    BARBERS.forEach((name, i) => {
-      const b = document.createElement('button');
-      b.textContent = name;
-      b.onclick = () => { selectedBarber = i; buildBarberButtons(); updatePreview(); };
-      if (selectedBarber === i) b.className = 'sel';
-      box.appendChild(b);
-    });
+    document.getElementById('barberButtons').innerHTML = BARBERS.map((n, i) => `
+      <button class="barber${selectedBarber === i ? ' sel' : ''}" onclick="pickBarber(${i})">
+        ${avatar(i)}<div class="name">${n}</div>
+      </button>`).join('');
+  }
+  function pickBarber(i) {
+    selectedBarber = i;
+    buildBarberButtons();
+    updatePreview();
+    document.getElementById('amount').focus();
+  }
+  function buildQuick() {
+    document.getElementById('quick').innerHTML = QUICK.map(v =>
+      `<button onclick="setAmount(${v})">${v}</button>`).join('');
+  }
+  function setAmount(v) {
+    document.getElementById('amount').value = v;
+    updatePreview();
   }
 
   function resetReceive() {
     selectedBarber = null;
     document.getElementById('amount').value = '';
-    document.getElementById('msg').textContent = '';
+    document.getElementById('err').textContent = '';
     buildBarberButtons();
+    buildQuick();
     updatePreview();
   }
 
   function updatePreview() {
     const amount = parseFloat(document.getElementById('amount').value) || 0;
-    const name = selectedBarber === null ? '—' : BARBERS[selectedBarber];
-    const barberShare = round2(amount * BARBER_PCT);
-    document.getElementById('preview').innerHTML =
-      `حساب ${name} (60%): <b>${money(barberShare)}</b><br>` +
-      `صندوق المحل (40%): <b>${money(round2(amount - barberShare))}</b>`;
+    const b = round2(amount * BARBER_PCT);
+    document.getElementById('bVal').textContent = money(b);
+    document.getElementById('sVal').textContent = money(amount - b);
+    document.getElementById('bLabel').textContent =
+      (selectedBarber === null ? 'للحلاق' : 'لـ ' + BARBERS[selectedBarber]) + ' (60%)';
+    document.getElementById('saveBtn').disabled = selectedBarber === null || !(amount > 0);
+    document.getElementById('err').textContent = '';
   }
 
   function saveEntry() {
-    const msg = document.getElementById('msg');
+    const err = document.getElementById('err');
     const amount = parseFloat(document.getElementById('amount').value);
-    if (selectedBarber === null) { msg.style.color = 'var(--danger)'; msg.textContent = 'اختر الحلاق أولاً'; return; }
-    if (!(amount > 0)) { msg.style.color = 'var(--danger)'; msg.textContent = 'أدخل قيمة مبلغ صحيحة'; return; }
+    if (selectedBarber === null) { err.textContent = 'اختر الحلاق أولاً'; return; }
+    if (!(amount > 0)) { err.textContent = 'أدخل قيمة مبلغ صحيحة'; return; }
 
     const barberShare = round2(amount * BARBER_PCT);
     const entry = {
@@ -177,49 +455,49 @@
     list.push(entry);
     save(list);
 
-    const name = BARBERS[selectedBarber];
+    toast(`✓ تم الحفظ: ${money(entry.barberShare)} لـ ${BARBERS[entry.barber]} و ${money(entry.shopShare)} للصندوق`);
     resetReceive();
-    msg.style.color = 'var(--ok)';
-    msg.textContent = `تم الحفظ: ${money(entry.barberShare)} لـ ${name} و ${money(entry.shopShare)} للصندوق`;
   }
 
   // ---------- كشف الحساب ----------
-  function buildWhoSelect() {
-    const sel = document.getElementById('who');
-    if (sel.options.length) return;
-    sel.add(new Option('صندوق المحل', 'shop'));
-    BARBERS.forEach((n, i) => sel.add(new Option(n, String(i))));
+  function buildTabs() {
+    const opts = [['shop', 'صندوق المحل']].concat(BARBERS.map((n, i) => [String(i), n]));
+    document.getElementById('tabs').innerHTML = opts.map(([v, n]) =>
+      `<button class="tab${statementWho === v ? ' active' : ''}" onclick="pickWho('${v}')">${n}</button>`).join('');
   }
+  function pickWho(v) { statementWho = v; renderStatement(); }
 
-  function fmtDate(iso) {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  }
-  function localDay(iso) {
-    const d = new Date(iso);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function setRange(kind) {
+    const now = new Date();
+    let from = '', to = '';
+    if (kind === 'today') { from = to = dayStr(now); }
+    if (kind === 'week') { const d = new Date(now); d.setDate(d.getDate() - 6); from = dayStr(d); to = dayStr(now); }
+    if (kind === 'month') { from = dayStr(new Date(now.getFullYear(), now.getMonth(), 1)); to = dayStr(now); }
+    document.getElementById('from').value = from;
+    document.getElementById('to').value = to;
+    renderStatement();
   }
 
   function renderStatement() {
-    buildWhoSelect();
-    const who = document.getElementById('who').value;
+    buildTabs();
+    const who = statementWho;
     const from = document.getElementById('from').value;
     const to = document.getElementById('to').value;
+    const isShop = who === 'shop';
 
     let list = load().filter(e => {
       const day = localDay(e.date);
       return (!from || day >= from) && (!to || day <= to);
     });
-    const isShop = who === 'shop';
     if (!isShop) list = list.filter(e => e.barber === Number(who));
 
     const title = isShop ? 'كشف حساب صندوق المحل' : 'كشف حساب ' + BARBERS[Number(who)];
-    const range = (from || to) ? `من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'كل الفترات';
+    const range = (from || to) ? `الفترة: من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'الفترة: كل الحركات';
     document.getElementById('printHead').innerHTML =
-      `<h2>${title}</h2><p>${range} — تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
+      `<h2>صندوق الصالون — ${title}</h2><p>${range} · تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
 
     if (!list.length) {
-      document.getElementById('report').innerHTML = `<h3 class="no-print" style="text-align:center">${title}</h3><p class="muted">لا توجد حركات</p>`;
+      document.getElementById('report').innerHTML = `<div class="empty">لا توجد حركات في هذه الفترة</div>`;
       return;
     }
 
@@ -231,33 +509,42 @@
         <td>${i + 1}</td>
         <td>${fmtDate(e.date)}</td>
         ${isShop ? `<td>${BARBERS[e.barber]}</td>` : ''}
-        <td>${money(e.amount)}</td>
-        <td>${money(share)}</td>
-        <td class="no-print"><button class="btn small danger" onclick="deleteEntry(${e.id})">حذف</button></td>
+        <td class="num">${money(e.amount)}</td>
+        <td class="num">${money(share)}</td>
+        <td class="no-print"><button class="del" title="حذف" onclick="deleteEntry(${e.id})">${TRASH}</button></td>
       </tr>`;
     }).join('');
 
     const pct = isShop ? '40%' : '60%';
     document.getElementById('report').innerHTML = `
-      <h3 class="no-print" style="text-align:center">${title}</h3>
-      <table>
-        <thead><tr>
-          <th>#</th><th>التاريخ</th>${isShop ? '<th>الحلاق</th>' : ''}
-          <th>المبلغ الكامل</th><th>النصيب (${pct})</th><th class="no-print"></th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr>
-          <td colspan="${isShop ? 3 : 2}">المجموع (${list.length} حركة)</td>
-          <td>${money(totalAmount)}</td><td>${money(totalShare)}</td><td class="no-print"></td>
-        </tr></tfoot>
-      </table>`;
+      <div class="summary">
+        <div class="stat"><div class="label">عدد الحركات</div><div class="value">${list.length}</div></div>
+        <div class="stat"><div class="label">إجمالي المبالغ</div><div class="value">${money(totalAmount)}</div></div>
+        <div class="stat gold"><div class="label">الرصيد (${pct})</div><div class="value">${money(totalShare)}</div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>التاريخ</th>${isShop ? '<th>الحلاق</th>' : ''}
+            <th>المبلغ الكامل</th><th>النصيب (${pct})</th><th class="no-print"></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr>
+            <td colspan="${isShop ? 3 : 2}">المجموع</td>
+            <td class="num">${money(totalAmount)}</td><td class="num">${money(totalShare)}</td><td class="no-print"></td>
+          </tr></tfoot>
+        </table>
+      </div>`;
   }
 
   function deleteEntry(id) {
     if (!confirm('هل تريد حذف هذه الحركة؟')) return;
     save(load().filter(e => e.id !== id));
     renderStatement();
+    toast('تم حذف الحركة');
   }
+
+  go('home');
 </script>
 </body>
 </html>
