@@ -277,6 +277,10 @@
   .del-btn:hover { background: rgba(239,91,91,.18); }
   .del-btn svg { width: 20px; height: 20px; }
   .action.danger .ic { color: var(--red); }
+  .backup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .backup-row .btn { font-size: 16px; padding: 14px 10px; }
+  .backup-note { color: var(--muted); font-size: 13px; text-align: center; margin-top: 10px; }
+  .backup-note.warn { color: var(--gold-2); }
   .chips button.on { color: var(--gold-ink); background: var(--gold); border-color: var(--gold); }
 
   .toast {
@@ -381,6 +385,22 @@
       <h3 class="section-title">حساب الحلاقين اليوم</h3>
       <div class="today-list" id="todayList"></div>
     </div>
+
+    <div class="card">
+      <h3 class="section-title">النسخ الاحتياطي</h3>
+      <div class="backup-row">
+        <button class="btn gold" onclick="exportBackup()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          نسخة احتياطية
+        </button>
+        <button class="btn dark" onclick="document.getElementById('restoreFile').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          استرجاع
+        </button>
+      </div>
+      <input type="file" id="restoreFile" accept=".json,application/json" class="hidden" onchange="importBackup(this)">
+      <div class="backup-note" id="backupNote"></div>
+    </div>
   </section>
 
   <!-- صفحة حذف الحركات -->
@@ -480,6 +500,7 @@
   const COLORS = ['#5b8def', '#3ecf8e', '#e8743b', '#b06ad9', '#e05a8a', '#2bb3c0'];
   const BARBER_PCT = 0.60;
   const STORE_KEY = 'salon_entries_v1';
+  const BACKUP_KEY = 'salon_last_backup';
   const QUICK = [5, 10, 15, 20, 30, 50];
   const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 
@@ -602,6 +623,7 @@
     document.getElementById('tShop').textContent = money(shop);
     document.getElementById('tCount').textContent = list.length;
     document.getElementById('tPays').innerHTML = accountsBreakdown(list);
+    renderBackupNote();
 
     const rows = per.map((p, i) => p.count ? `
       <div class="item">
@@ -775,6 +797,82 @@
     if (!document.getElementById('statement').classList.contains('hidden')) renderStatement();
     if (!document.getElementById('remove').classList.contains('hidden')) renderRemove();
     toast('تم حذف الحركة');
+  }
+
+  // ---------- النسخ الاحتياطي ----------
+  function renderBackupNote() {
+    const note = document.getElementById('backupNote');
+    const last = localStorage.getItem(BACKUP_KEY);
+    if (!last) {
+      note.textContent = 'ما في نسخة احتياطية لحد هلق';
+      note.className = 'backup-note warn';
+      return;
+    }
+    const days = Math.floor((Date.now() - new Date(last).getTime()) / 864e5);
+    note.textContent = 'آخر نسخة احتياطية: ' + fmtDate(last) + (days >= 7 ? ` (من ${days} يوم، اعمل نسخة جديدة)` : '');
+    note.className = 'backup-note' + (days >= 7 ? ' warn' : '');
+  }
+
+  async function exportBackup() {
+    const list = load();
+    const data = JSON.stringify({ app: '97-hair-design', version: 1, exportedAt: new Date().toISOString(), entries: list }, null, 1);
+    const name = `97-hair-design-backup-${dayStr(new Date())}.json`;
+    const file = new File([data], name, { type: 'application/json' });
+
+    // على الموبايل: نافذة المشاركة (واتساب، ملفات...)، وغير هيك تنزيل مباشر
+    let done = false;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'نسخة احتياطية - 97 Hair Design' });
+        done = true;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    if (!done) {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    localStorage.setItem(BACKUP_KEY, new Date().toISOString());
+    renderBackupNote();
+    toast(`✓ تم حفظ نسخة احتياطية (${list.length} حركة)`);
+  }
+
+  function isValidEntry(e) {
+    return e && typeof e.id === 'number' && typeof e.date === 'string' && !isNaN(new Date(e.date)) &&
+      Number.isInteger(e.barber) && e.barber >= 0 && e.barber < BARBERS.length &&
+      [e.amount, e.barberShare, e.shopShare].every(n => typeof n === 'number' && isFinite(n));
+  }
+
+  function importBackup(input) {
+    const f = input.files[0];
+    input.value = '';
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let entries;
+      try {
+        const data = JSON.parse(reader.result);
+        entries = Array.isArray(data) ? data : data.entries;
+        if (!Array.isArray(entries) || !entries.every(isValidEntry)) throw new Error('bad');
+      } catch (e) {
+        alert('هاد الملف مش نسخة احتياطية صحيحة من البرنامج');
+        return;
+      }
+      const current = load();
+      const ids = new Set(current.map(e => e.id));
+      const fresh = entries.filter(e => !ids.has(e.id));
+      if (!fresh.length) { toast('كل الحركات اللي بالملف موجودة أصلاً'); return; }
+      if (!confirm(`الملف فيه ${entries.length} حركة، منها ${fresh.length} مش موجودة هلق.\nبدك تضيفهم؟ (الحركات الموجودة ما بتتغير)`)) return;
+      const merged = current.concat(fresh).sort((a, b) => a.date.localeCompare(b.date));
+      save(merged);
+      renderAdmin();
+      toast(`✓ تم استرجاع ${fresh.length} حركة`);
+    };
+    reader.readAsText(f);
   }
 
   // ---------- حذف الحركات ----------
