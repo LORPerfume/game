@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>صندوق الصالون</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --text:#222; --muted:#666; --main:#1f6feb; --ok:#1a7f37; --danger:#c62828; --border:#ddd; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Tahoma, Arial, sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:720px; margin:0 auto; padding:16px; }
+  h1, h2 { text-align:center; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
+  .big-btn { display:block; width:100%; padding:28px; font-size:26px; font-weight:bold; border:0; border-radius:12px; background:var(--main); color:#fff; cursor:pointer; margin-bottom:14px; }
+  .big-btn.secondary { background:#444; font-size:20px; padding:18px; }
+  button { font-family:inherit; }
+  .btn { padding:12px 18px; font-size:17px; border:0; border-radius:8px; background:var(--main); color:#fff; cursor:pointer; }
+  .btn.gray { background:#777; }
+  .btn.ok { background:var(--ok); }
+  .btn.small { padding:6px 10px; font-size:14px; }
+  .btn.danger { background:var(--danger); }
+  label { display:block; font-weight:bold; margin:14px 0 8px; }
+  .barbers { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .barbers button { padding:18px 6px; font-size:18px; border:2px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
+  .barbers button.sel { border-color:var(--main); background:#e7f0ff; font-weight:bold; }
+  input, select { width:100%; padding:12px; font-size:20px; border:1px solid var(--border); border-radius:8px; font-family:inherit; }
+  .preview { margin-top:14px; padding:12px; background:#f7f7f7; border-radius:8px; line-height:1.9; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+  .row > * { flex:1; }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:15px; }
+  th, td { border:1px solid var(--border); padding:8px; text-align:center; }
+  th { background:#eee; }
+  tfoot td { font-weight:bold; background:#fafafa; }
+  .msg { text-align:center; color:var(--ok); font-weight:bold; min-height:24px; margin-top:10px; }
+  .muted { color:var(--muted); text-align:center; }
+  .filters { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .filters input, .filters select { font-size:16px; }
+  .print-head { display:none; }
+  .hidden { display:none !important; }
+  @media (max-width:480px) { .barbers { grid-template-columns:repeat(2,1fr); } .filters { grid-template-columns:1fr; } }
+  @media print {
+    body { background:#fff; }
+    .no-print { display:none !important; }
+    .card { border:0; padding:0; }
+    .print-head { display:block; text-align:center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- الصفحة الرئيسية -->
+  <section id="home">
+    <h1>صندوق الصالون</h1>
+    <button class="big-btn" onclick="go('receive')">استلام مبلغ</button>
+    <button class="big-btn secondary" onclick="go('statement')">كشف حساب / طباعة</button>
+  </section>
+
+  <!-- صفحة استلام مبلغ -->
+  <section id="receive" class="hidden">
+    <h2>استلام مبلغ</h2>
+    <div class="card">
+      <label>اختر الحلاق</label>
+      <div class="barbers" id="barberButtons"></div>
+
+      <label for="amount">قيمة المبلغ</label>
+      <input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="updatePreview()">
+
+      <div class="preview" id="preview"></div>
+
+      <div class="row">
+        <button class="btn ok" onclick="saveEntry()">حفظ</button>
+        <button class="btn gray" onclick="go('home')">رجوع</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </div>
+  </section>
+
+  <!-- صفحة كشف الحساب -->
+  <section id="statement" class="hidden">
+    <h2 class="no-print">كشف حساب</h2>
+    <div class="card">
+      <div class="filters no-print">
+        <div>
+          <label for="who">الحساب</label>
+          <select id="who" onchange="renderStatement()"></select>
+        </div>
+        <div>
+          <label for="from">من تاريخ</label>
+          <input id="from" type="date" onchange="renderStatement()">
+        </div>
+        <div>
+          <label for="to">إلى تاريخ</label>
+          <input id="to" type="date" onchange="renderStatement()">
+        </div>
+      </div>
+
+      <div class="print-head" id="printHead"></div>
+      <div id="report"></div>
+
+      <div class="row no-print">
+        <button class="btn" onclick="window.print()">طباعة</button>
+        <button class="btn gray" onclick="go('home')">رجوع</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const BARBERS = ['حلاق 1', 'حلاق 2', 'حلاق 3', 'حلاق 4', 'حلاق 5', 'حلاق 6'];
+  const BARBER_PCT = 0.60;
+  const SHOP_PCT = 0.40;
+  const STORE_KEY = 'salon_entries_v1';
+  let selectedBarber = null;
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { return []; }
+  }
+  function save(list) { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
+  function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+  function round2(n) { return Math.round(n * 100) / 100; }
+
+  function go(page) {
+    ['home', 'receive', 'statement'].forEach(id =>
+      document.getElementById(id).classList.toggle('hidden', id !== page));
+    if (page === 'receive') resetReceive();
+    if (page === 'statement') renderStatement();
+  }
+
+  // ---------- استلام مبلغ ----------
+  function buildBarberButtons() {
+    const box = document.getElementById('barberButtons');
+    box.innerHTML = '';
+    BARBERS.forEach((name, i) => {
+      const b = document.createElement('button');
+      b.textContent = name;
+      b.onclick = () => { selectedBarber = i; buildBarberButtons(); updatePreview(); };
+      if (selectedBarber === i) b.className = 'sel';
+      box.appendChild(b);
+    });
+  }
+
+  function resetReceive() {
+    selectedBarber = null;
+    document.getElementById('amount').value = '';
+    document.getElementById('msg').textContent = '';
+    buildBarberButtons();
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const name = selectedBarber === null ? '—' : BARBERS[selectedBarber];
+    const barberShare = round2(amount * BARBER_PCT);
+    document.getElementById('preview').innerHTML =
+      `حساب ${name} (60%): <b>${money(barberShare)}</b><br>` +
+      `صندوق المحل (40%): <b>${money(round2(amount - barberShare))}</b>`;
+  }
+
+  function saveEntry() {
+    const msg = document.getElementById('msg');
+    const amount = parseFloat(document.getElementById('amount').value);
+    if (selectedBarber === null) { msg.style.color = 'var(--danger)'; msg.textContent = 'اختر الحلاق أولاً'; return; }
+    if (!(amount > 0)) { msg.style.color = 'var(--danger)'; msg.textContent = 'أدخل قيمة مبلغ صحيحة'; return; }
+
+    const barberShare = round2(amount * BARBER_PCT);
+    const entry = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      barber: selectedBarber,
+      amount: round2(amount),
+      barberShare,
+      shopShare: round2(amount - barberShare)
+    };
+    const list = load();
+    list.push(entry);
+    save(list);
+
+    const name = BARBERS[selectedBarber];
+    resetReceive();
+    msg.style.color = 'var(--ok)';
+    msg.textContent = `تم الحفظ: ${money(entry.barberShare)} لـ ${name} و ${money(entry.shopShare)} للصندوق`;
+  }
+
+  // ---------- كشف الحساب ----------
+  function buildWhoSelect() {
+    const sel = document.getElementById('who');
+    if (sel.options.length) return;
+    sel.add(new Option('صندوق المحل', 'shop'));
+    BARBERS.forEach((n, i) => sel.add(new Option(n, String(i))));
+  }
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+  function localDay(iso) {
+    const d = new Date(iso);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function renderStatement() {
+    buildWhoSelect();
+    const who = document.getElementById('who').value;
+    const from = document.getElementById('from').value;
+    const to = document.getElementById('to').value;
+
+    let list = load().filter(e => {
+      const day = localDay(e.date);
+      return (!from || day >= from) && (!to || day <= to);
+    });
+    const isShop = who === 'shop';
+    if (!isShop) list = list.filter(e => e.barber === Number(who));
+
+    const title = isShop ? 'كشف حساب صندوق المحل' : 'كشف حساب ' + BARBERS[Number(who)];
+    const range = (from || to) ? `من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'كل الفترات';
+    document.getElementById('printHead').innerHTML =
+      `<h2>${title}</h2><p>${range} — تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
+
+    if (!list.length) {
+      document.getElementById('report').innerHTML = `<h3 class="no-print" style="text-align:center">${title}</h3><p class="muted">لا توجد حركات</p>`;
+      return;
+    }
+
+    let totalAmount = 0, totalShare = 0;
+    const rows = list.map((e, i) => {
+      const share = isShop ? e.shopShare : e.barberShare;
+      totalAmount += e.amount; totalShare += share;
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${fmtDate(e.date)}</td>
+        ${isShop ? `<td>${BARBERS[e.barber]}</td>` : ''}
+        <td>${money(e.amount)}</td>
+        <td>${money(share)}</td>
+        <td class="no-print"><button class="btn small danger" onclick="deleteEntry(${e.id})">حذف</button></td>
+      </tr>`;
+    }).join('');
+
+    const pct = isShop ? '40%' : '60%';
+    document.getElementById('report').innerHTML = `
+      <h3 class="no-print" style="text-align:center">${title}</h3>
+      <table>
+        <thead><tr>
+          <th>#</th><th>التاريخ</th>${isShop ? '<th>الحلاق</th>' : ''}
+          <th>المبلغ الكامل</th><th>النصيب (${pct})</th><th class="no-print"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr>
+          <td colspan="${isShop ? 3 : 2}">المجموع (${list.length} حركة)</td>
+          <td>${money(totalAmount)}</td><td>${money(totalShare)}</td><td class="no-print"></td>
+        </tr></tfoot>
+      </table>`;
+  }
+
+  function deleteEntry(id) {
+    if (!confirm('هل تريد حذف هذه الحركة؟')) return;
+    save(load().filter(e => e.id !== id));
+    renderStatement();
+  }
+</script>
+</body>
+</html>
