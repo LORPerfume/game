@@ -115,8 +115,28 @@
   .action.ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
   .action.ghost .ic { background: var(--card-2); color: var(--gold-2); }
 
-  .hero-action { padding: 30px 22px; margin-top: 6px; }
-  .hero-action .t { font-size: 30px; }
+  .receive-btn {
+    position: relative; overflow: hidden; width: 100%; margin-top: 8px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    padding: 34px 20px; border-radius: 26px; border: 1px solid rgba(255,230,180,.55);
+    background: linear-gradient(160deg, #f6d796 0%, #d6a85b 45%, #a97b36 100%);
+    color: var(--gold-ink); box-shadow: 0 18px 40px rgba(214,168,91,.28), inset 0 1px 0 rgba(255,255,255,.5);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .receive-btn:active { transform: scale(.97); box-shadow: 0 8px 20px rgba(214,168,91,.25); }
+  .receive-btn::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.35) 50%, transparent 65%);
+    background-size: 250% 100%; animation: shine 4s ease-in-out infinite;
+  }
+  .receive-btn .ic {
+    width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(36,26,8,.88); color: var(--gold-2);
+    box-shadow: 0 6px 16px rgba(36,26,8,.35), 0 0 0 6px rgba(36,26,8,.12);
+  }
+  .receive-btn .ic svg { width: 38px; height: 38px; }
+  .receive-btn .t { font-size: 32px; font-weight: 800; letter-spacing: .5px; }
+  @media (prefers-reduced-motion: reduce) { .receive-btn::after { animation: none; } }
   .admin-link {
     display: flex; align-items: center; justify-content: center; gap: 8px; margin: 26px auto 0;
     background: transparent; border: 1px solid var(--border); color: var(--muted);
@@ -349,9 +369,9 @@
       <div class="date" id="heroDate"></div>
     </div>
 
-    <button class="action primary hero-action" onclick="go('receive')">
-      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
-      <span><span class="t">استلام مبلغ</span><span class="d">سجّل المبلغ بالصندوق أو كليك أو فيزا، 60% منه للحلاق</span></span>
+    <button class="receive-btn" onclick="go('receive')">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+      <span class="t">استلام مبلغ</span>
     </button>
 
     <button class="admin-link" onclick="go('admin')">
