@@ -351,6 +351,38 @@
   }
 
   /* ---------- الطباعة ---------- */
+  /* ---------- الكشف كصورة للمشاركة (نفس شكل الطباعة) ---------- */
+  .stmt-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+  .sheet {
+    position: fixed; top: 0; left: -10000px; width: 794px; padding: 40px; direction: rtl;
+    background: #fff; color: #000; font-family: 'Cairo', Tahoma, Arial, sans-serif;
+  }
+  .sheet .no-print { display: none !important; }
+  .sheet .print-head { display: block; text-align: center; margin-bottom: 14px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+  .sheet .print-head h2 { margin: 0 0 2px; }
+  .sheet .print-head p { margin: 0; font-size: 13px; }
+  .sheet .print-logo { width: 70px; height: 70px; border-radius: 10px; object-fit: cover; margin-bottom: 6px; }
+  .sheet .print-brand { font-family: 'Cinzel', serif; font-size: 13px; margin-bottom: 4px; direction: ltr; }
+  .sheet .stat { background: #fff; border-color: #999; box-shadow: none; }
+  .sheet .stat .label { color: #444; }
+  .sheet .stat .value, .sheet .stat.gold .value { color: #000; }
+  .sheet .table-wrap { border: 0; overflow: visible; }
+  .sheet table { font-size: 13px; }
+  .sheet th, .sheet td { white-space: normal; padding: 6px; border: 1px solid #999; color: #000; }
+  .sheet th { background: #eee; }
+  .sheet tbody tr { background: #fff; }
+  .sheet tfoot td { background: #f3f3f3; }
+  .shot-view {
+    position: fixed; inset: 0; z-index: 30; background: #07080b; display: flex; flex-direction: column;
+    padding: 16px max(16px, env(safe-area-inset-left, 0px)) 20px;
+  }
+  .shot-view .hint { color: var(--muted); text-align: center; font-size: 14px; margin-bottom: 10px; }
+  .shot-view .img-wrap { flex: 0 1 auto; min-height: 0; overflow: auto; border-radius: 10px; background: #fff; }
+  .shot-view .row2 .btn { text-decoration: none; }
+  .shot-view .row2 { margin-top: auto; padding-top: 12px; }
+  .shot-view img { width: 100%; display: block; }
+  .shot-view .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
   @media print {
     @page { margin: 14mm; }
     body { background: #fff; color: #000; }
@@ -521,10 +553,16 @@
       <div id="report"></div>
     </div>
 
-    <button class="btn gold no-print" onclick="window.print()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      طباعة الكشف
-    </button>
+    <div class="stmt-actions no-print">
+      <button class="btn gold" id="shareStmtBtn" onclick="shareStatement()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        <span id="shareStmtLabel">مشاركة الكشف</span>
+      </button>
+      <button class="btn dark" onclick="window.print()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        طباعة
+      </button>
+    </div>
   </section>
 
 </div>
@@ -542,6 +580,15 @@
       <div class="err" id="authErr" style="margin-top:0"></div>
       <button class="btn gold" type="submit" id="authBtn">دخول</button>
     </form>
+  </div>
+</div>
+
+<div class="shot-view hidden" id="shotView">
+  <div class="hint">اضغط مطوّلاً على الصورة لحفظها أو مشاركتها</div>
+  <div class="img-wrap"><img id="shotImg" alt="كشف الحساب"></div>
+  <div class="row2">
+    <a class="btn gold" id="shotDownload" download="statement.png">تنزيل</a>
+    <button class="btn dark" onclick="closeShot()">إغلاق</button>
   </div>
 </div>
 
@@ -976,6 +1023,71 @@
     entriesRef.doc(String(id)).delete().catch(writeError);
     toast('تم حذف الحركة');
   }
+
+  // ---------- مشاركة الكشف كصورة ----------
+  // على الآيفون (من أيقونة الشاشة الرئيسية أو من جوا تطبيق) الطباعة ما بتشتغل، فبنحوّل الكشف لصورة
+  let h2cLoading = null;
+  function loadHtml2canvas() {
+    if (window.html2canvas) return Promise.resolve();
+    if (!h2cLoading) {
+      h2cLoading = new Promise((resolve, reject) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        sc.onload = resolve;
+        sc.onerror = () => { h2cLoading = null; reject(new Error('load')); };
+        document.head.appendChild(sc);
+      });
+    }
+    return h2cLoading;
+  }
+
+  let shotUrl = null;
+  async function shareStatement() {
+    const btn = document.getElementById('shareStmtBtn');
+    const label = document.getElementById('shareStmtLabel');
+    btn.disabled = true;
+    label.textContent = 'جاري التجهيز...';
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet';
+    const head = document.createElement('div');
+    head.className = 'print-head';
+    head.innerHTML = document.getElementById('printHead').innerHTML;
+    sheet.appendChild(head);
+    sheet.insertAdjacentHTML('beforeend', document.getElementById('report').innerHTML);
+    document.body.appendChild(sheet);
+    try {
+      await loadHtml2canvas();
+      await document.fonts.ready;
+      await Promise.all([...sheet.querySelectorAll('img')].map(img =>
+        img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+      const canvas = await html2canvas(sheet, { scale: 2, backgroundColor: '#ffffff' });
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const name = `97-hair-design-statement-${dayStr(new Date())}.png`;
+      const file = new File([blob], name, { type: 'image/png' });
+      let shared = false;
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); shared = true; }
+        catch (e) { if (e.name === 'AbortError') shared = true; }
+      }
+      if (!shared) showShot(blob, name);
+    } catch (e) {
+      console.error('DBG', e && (e.stack || e.message || e));
+      toast('ما قدرت أجهز الكشف، تأكد من الإنترنت وجرب مرة تانية');
+    } finally {
+      sheet.remove();
+      btn.disabled = false;
+      label.textContent = 'مشاركة الكشف';
+    }
+  }
+  function showShot(blob, name) {
+    if (shotUrl) URL.revokeObjectURL(shotUrl);
+    shotUrl = URL.createObjectURL(blob);
+    document.getElementById('shotImg').src = shotUrl;
+    const a = document.getElementById('shotDownload');
+    a.href = shotUrl; a.download = name;
+    document.getElementById('shotView').classList.remove('hidden');
+  }
+  function closeShot() { document.getElementById('shotView').classList.add('hidden'); }
 
   // ---------- النسخ الاحتياطي ----------
   function renderBackupNote() {
