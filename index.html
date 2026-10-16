@@ -297,6 +297,35 @@
   .del-btn:hover { background: rgba(239,91,91,.18); }
   .del-btn svg { width: 20px; height: 20px; }
   .action.danger .ic { color: var(--red); }
+  /* ---------- تسجيل الدخول والمزامنة ---------- */
+  .auth-screen {
+    position: fixed; inset: 0; z-index: 40; overflow-y: auto;
+    display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px));
+    background:
+      radial-gradient(900px 500px at 50% -10%, rgba(214,168,91,.18) 0%, transparent 65%),
+      var(--bg);
+  }
+  .auth-card { width: min(380px, 100%); text-align: center; }
+  .auth-card .hero-frame { width: 140px; margin-bottom: 10px; }
+  .auth-card .brand { font-size: 24px; margin: 10px 0 18px; }
+  .auth-card form { display: grid; gap: 10px; text-align: right; }
+  .auth-card label { color: var(--muted); font-size: 13px; }
+  .auth-card input {
+    width: 100%; padding: 14px; font-size: 17px; border-radius: 14px; outline: 0;
+    background: var(--card); color: var(--text); border: 2px solid var(--border); direction: ltr; text-align: left;
+  }
+  .auth-card input:focus { border-color: var(--gold); }
+  .auth-card .btn { margin-top: 6px; }
+  .auth-card .loading { color: var(--muted); padding: 20px 0; }
+  .sync {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 12px; border-radius: 99px;
+    font-size: 12px; font-weight: 700; background: var(--card); border: 1px solid var(--border); color: var(--muted);
+  }
+  .sync::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .sync.ok::before { background: var(--green); }
+  .sync.pending::before { background: var(--gold); }
+  .sync.offline::before { background: var(--red); }
+  .logout { display: block; margin: 4px auto 0; background: transparent; border: 0; color: var(--muted); font-size: 14px; cursor: pointer; text-decoration: underline; }
   .backup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .backup-row .btn { font-size: 16px; padding: 14px 10px; }
   .backup-note { color: var(--muted); font-size: 13px; text-align: center; margin-top: 10px; }
@@ -367,6 +396,7 @@
       <div class="brand">97 HAIR DESIGN</div>
       <div class="divider">✂</div>
       <div class="date" id="heroDate"></div>
+      <div class="sync" id="syncPill">جاري الاتصال...</div>
     </div>
 
     <button class="receive-btn" onclick="go('receive')">
@@ -421,6 +451,8 @@
       <input type="file" id="restoreFile" accept=".json,application/json" class="hidden" onchange="importBackup(this)">
       <div class="backup-note" id="backupNote"></div>
     </div>
+
+    <button class="logout" onclick="logout()">تسجيل خروج من هالجهاز</button>
   </section>
 
   <!-- صفحة حذف الحركات -->
@@ -497,6 +529,22 @@
 
 </div>
 
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="hero-frame"><img src="logo.jpg" alt="97 Hair Design"></div>
+    <div class="brand">97 HAIR DESIGN</div>
+    <div class="loading" id="authLoading">جاري التحميل...</div>
+    <form id="authForm" class="hidden" onsubmit="event.preventDefault(); signIn();">
+      <label for="authEmail">الإيميل</label>
+      <input id="authEmail" type="email" autocomplete="username" required>
+      <label for="authPass">كلمة السر</label>
+      <input id="authPass" type="password" autocomplete="current-password" required>
+      <div class="err" id="authErr" style="margin-top:0"></div>
+      <button class="btn gold" type="submit" id="authBtn">دخول</button>
+    </form>
+  </div>
+</div>
+
 <div class="modal hidden" id="loginModal" onclick="if (event.target === this) closeLogin()">
   <div class="modal-card" id="loginCard">
     <img class="logo" src="logo.jpg" alt="">
@@ -513,6 +561,9 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
   // الترتيب مهم: الحركات المحفوظة بتشير للحلاق برقم ترتيبه
   const BARBERS = ['قصي', 'بشار', 'محمد', 'احمد', 'يوسف', 'المساعد يوسف'];
@@ -547,10 +598,120 @@
   let selectedPay = DEFAULT_PAY;
   let statementWho = 'cash';
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { return []; }
+  // ---------- الحفظ أونلاين (Firebase) ----------
+  firebase.initializeApp({
+    apiKey: 'AIzaSyCurYGYJSDasemj_nh3EkzZv0MP0H-T-g0',
+    authDomain: 'hair-design-97.firebaseapp.com',
+    projectId: 'hair-design-97',
+    storageBucket: 'hair-design-97.firebasestorage.app',
+    messagingSenderId: '892273165302',
+    appId: '1:892273165302:web:549c9eedda4de561013dd7'
+  });
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  // نسخة محلية من البيانات، فالبرنامج بيشتغل والحركات بتنحفظ حتى لو انقطع النت
+  db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+  const entriesRef = db.collection('entries');
+  const MIGRATED_KEY = 'salon_migrated_v1';
+
+  let entries = [];
+  let unsubscribe = null;
+  let currentPage = 'home';
+
+  // كل الحركات، مرتبة من الأقدم للأحدث
+  function load() { return entries.slice(); }
+
+  function newId() { return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
+
+  function writeError() { toast('ما انحفظ التعديل، تأكد إنك مسجّل دخول وجرب مرة تانية'); }
+
+  async function writeEntries(list) {
+    for (let i = 0; i < list.length; i += 400) {
+      const batch = db.batch();
+      list.slice(i, i + 400).forEach(e => batch.set(entriesRef.doc(String(e.id)), e));
+      await batch.commit();
+    }
   }
-  function save(list) { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
+
+  function setSync(state) {
+    const pill = document.getElementById('syncPill');
+    const text = { ok: 'محفوظ أونلاين', pending: 'جاري الحفظ...', offline: 'بدون إنترنت، بتنحفظ لما يرجع النت' };
+    pill.className = 'sync ' + state;
+    pill.textContent = text[state];
+  }
+
+  function rerender() {
+    if (currentPage === 'admin') renderAdmin();
+    if (currentPage === 'statement') renderStatement();
+    if (currentPage === 'remove') renderRemove();
+  }
+
+  // رفع الحركات اللي كانت محفوظة على هالجهاز قبل الربط، مرة وحدة
+  async function migrateLocal() {
+    let local = [];
+    try {
+      if (localStorage.getItem(MIGRATED_KEY)) return;
+      local = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
+    } catch (e) { return; }
+    const ids = new Set(entries.map(e => e.id));
+    const fresh = local.filter(e => isValidEntry(e) && !ids.has(e.id));
+    try {
+      if (fresh.length) await writeEntries(fresh);
+      localStorage.setItem(MIGRATED_KEY, new Date().toISOString());
+      if (fresh.length) toast(`✓ انرفعت ${fresh.length} حركة كانت محفوظة على هالجهاز`);
+    } catch (e) { /* بنحاول مرة تانية بالفتحة الجاية */ }
+  }
+
+  function startSync() {
+    let migrated = false;
+    unsubscribe = entriesRef.onSnapshot({ includeMetadataChanges: true }, snap => {
+      entries = snap.docs.map(d => d.data()).sort((a, b) => a.date.localeCompare(b.date));
+      setSync(snap.metadata.hasPendingWrites ? 'pending' : snap.metadata.fromCache ? 'offline' : 'ok');
+      rerender();
+      if (!migrated && !snap.metadata.fromCache) { migrated = true; migrateLocal(); }
+    }, err => {
+      setSync('offline');
+      toast('ما قدرت أجيب البيانات: ' + (err.code === 'permission-denied' ? 'ما في صلاحية' : 'مشكلة بالاتصال'));
+    });
+  }
+
+  auth.onAuthStateChanged(user => {
+    document.getElementById('authLoading').classList.add('hidden');
+    if (user) {
+      document.getElementById('authScreen').classList.add('hidden');
+      if (!unsubscribe) startSync();
+    } else {
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      entries = [];
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('authForm').classList.remove('hidden');
+    }
+  });
+
+  async function signIn() {
+    const err = document.getElementById('authErr');
+    const btn = document.getElementById('authBtn');
+    err.textContent = '';
+    btn.disabled = true;
+    try {
+      await auth.signInWithEmailAndPassword(
+        document.getElementById('authEmail').value.trim(),
+        document.getElementById('authPass').value);
+      document.getElementById('authPass').value = '';
+    } catch (e) {
+      err.textContent =
+        e.code === 'auth/network-request-failed' ? 'ما في إنترنت، تأكد من الاتصال وجرب مرة تانية' :
+        e.code === 'auth/too-many-requests' ? 'محاولات كثير، استنى شوي وجرب مرة تانية' :
+        'الإيميل أو كلمة السر غلط';
+    }
+    btn.disabled = false;
+  }
+
+  function logout() {
+    if (!confirm('تسجيل خروج من هالجهاز؟ بتحتاج الإيميل وكلمة السر لترجع تدخل.')) return;
+    go('home');
+    auth.signOut();
+  }
   function round2(n) { return Math.round(n * 100) / 100; }
   function money(n) { return round2(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function avatar(i, sm) {
@@ -623,6 +784,7 @@
     document.getElementById('topbar').classList.toggle('home-mode', page === 'home');
     document.getElementById('heroDate').textContent = PAGES.home[1]();
     window.scrollTo(0, 0);
+    currentPage = page;
     if (page === 'admin') renderAdmin();
     if (page === 'receive') resetReceive();
     if (page === 'statement') renderStatement();
@@ -712,7 +874,7 @@
 
     const barberShare = round2(amount * BARBER_PCT);
     const entry = {
-      id: Date.now(),
+      id: newId(),
       date: new Date().toISOString(),
       barber: selectedBarber,
       amount: round2(amount),
@@ -720,9 +882,7 @@
       shopShare: round2(amount - barberShare),
       pay: selectedPay
     };
-    const list = load();
-    list.push(entry);
-    save(list);
+    entriesRef.doc(String(entry.id)).set(entry).catch(writeError);
 
     toast(`✓ نزل ${money(entry.amount)} بـ ${accountName(entry.pay)}، منها ${money(entry.barberShare)} لـ ${BARBERS[entry.barber]}`);
     resetReceive();
@@ -813,9 +973,7 @@
     const e = load().find(x => x.id === id);
     if (!e) return;
     if (!confirm(`حذف حركة ${BARBERS[e.barber]} بمبلغ ${money(e.amount)} (${payName(e)}) بتاريخ ${fmtDate(e.date)}؟`)) return;
-    save(load().filter(x => x.id !== id));
-    if (!document.getElementById('statement').classList.contains('hidden')) renderStatement();
-    if (!document.getElementById('remove').classList.contains('hidden')) renderRemove();
+    entriesRef.doc(String(id)).delete().catch(writeError);
     toast('تم حذف الحركة');
   }
 
@@ -887,10 +1045,9 @@
       const fresh = entries.filter(e => !ids.has(e.id));
       if (!fresh.length) { toast('كل الحركات اللي بالملف موجودة أصلاً'); return; }
       if (!confirm(`الملف فيه ${entries.length} حركة، منها ${fresh.length} مش موجودة هلق.\nبدك تضيفهم؟ (الحركات الموجودة ما بتتغير)`)) return;
-      const merged = current.concat(fresh).sort((a, b) => a.date.localeCompare(b.date));
-      save(merged);
-      renderAdmin();
-      toast(`✓ تم استرجاع ${fresh.length} حركة`);
+      writeEntries(fresh)
+        .then(() => toast(`✓ تم استرجاع ${fresh.length} حركة`))
+        .catch(writeError);
     };
     reader.readAsText(f);
   }
