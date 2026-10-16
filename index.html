@@ -248,6 +248,14 @@
   .chips button:hover { color: var(--text); border-color: var(--gold); }
 
   .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .summary.four { grid-template-columns: repeat(4, 1fr); }
+  .stat-link { font: inherit; color: inherit; text-align: right; cursor: pointer; transition: border-color .12s; }
+  .stat-link:hover, .stat-link:focus-visible { border-color: var(--gold); outline: 0; }
+  .stats-hint { color: var(--gold-2); font-size: 13px; font-weight: 700; text-align: center; margin: -8px 0 18px; }
+  .rep-title { font-size: 15px; font-weight: 800; color: var(--gold-2); margin: 20px 0 8px; }
+  .rep-title:first-child { margin-top: 0; }
+  .sheet .rep-title { color: #000; }
+  .sheet .summary.four { grid-template-columns: repeat(4, 1fr); }
   .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
   th, td { padding: 11px 10px; text-align: center; white-space: nowrap; }
@@ -344,6 +352,7 @@
     .barbers { grid-template-columns: repeat(2, 1fr); }
     .stat .value { font-size: 18px; }
     .summary .stat .value { font-size: 16px; }
+    .summary.four { grid-template-columns: repeat(2, 1fr); }
     .action .t { font-size: 20px; }
     table { font-size: 13px; }
     th, td { white-space: normal; padding: 9px 5px; }
@@ -397,6 +406,7 @@
     .summary .stat, .pay-break .stat { background: #fff; border-color: #999; color: #000; }
     .stat .label { color: #444; }
     .stat.gold .value { color: #000; }
+    .rep-title { color: #000; }
     .pay-tag { background: #fff; border-color: #999; }
     .pay-break .stat svg { color: #000; }
     .table-wrap { border: 0; overflow: visible; }
@@ -445,10 +455,11 @@
   <!-- صفحة الإدارة -->
   <section id="admin" class="hidden">
     <div class="stats">
-      <div class="stat"><div class="label">دخل اليوم</div><div class="value" id="tTotal">0</div></div>
-      <div class="stat gold"><div class="label">ربح المحل اليوم</div><div class="value" id="tShop">0</div></div>
-      <div class="stat"><div class="label">عدد الحركات</div><div class="value" id="tCount">0</div></div>
+      <button class="stat stat-link" onclick="openDaily()"><div class="label">دخل اليوم</div><div class="value" id="tTotal">0</div></button>
+      <button class="stat stat-link gold" onclick="openDaily()"><div class="label">ربح المحل اليوم</div><div class="value" id="tShop">0</div></button>
+      <button class="stat stat-link" onclick="openDaily()"><div class="label">عدد الحركات</div><div class="value" id="tCount">0</div></button>
     </div>
+    <div class="stats-hint">اضغط على الأرقام لتشوف كشف اليوم كامل</div>
 
     <h3 class="section-title">أرصدة الحسابات اليوم</h3>
     <div class="pay-break" id="tPays"></div>
@@ -485,6 +496,35 @@
     </div>
 
     <button class="logout" onclick="logout()">تسجيل خروج من هالجهاز</button>
+  </section>
+
+  <!-- كشف اليوم -->
+  <section id="daily" class="hidden">
+    <div class="card no-print">
+      <div class="dates" style="grid-template-columns:1fr">
+        <div><label for="dayPick">اليوم</label><input id="dayPick" type="date" onchange="renderDaily()"></div>
+      </div>
+      <div class="chips">
+        <button onclick="setDay(0)">اليوم</button>
+        <button onclick="setDay(-1)">أمس</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="print-head" id="dayHead"></div>
+      <div id="dayReport"></div>
+    </div>
+
+    <div class="stmt-actions no-print">
+      <button class="btn gold" id="shareDayBtn" onclick="shareSheet('dayHead', 'dayReport', 'shareDayBtn', 'shareDayLabel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        <span id="shareDayLabel">مشاركة الكشف</span>
+      </button>
+      <button class="btn dark" onclick="window.print()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        طباعة
+      </button>
+    </div>
   </section>
 
   <!-- صفحة حذف الحركات -->
@@ -691,6 +731,7 @@
     if (currentPage === 'admin') renderAdmin();
     if (currentPage === 'statement') renderStatement();
     if (currentPage === 'remove') renderRemove();
+    if (currentPage === 'daily') renderDaily();
   }
 
   // رفع الحركات اللي كانت محفوظة على هالجهاز قبل الربط، مرة وحدة
@@ -785,9 +826,10 @@
     receive: ['استلام مبلغ', () => 'اختر الحلاق واكتب المبلغ'],
     admin: ['الإدارة', () => 'ملخص اليوم وكشوف الحساب'],
     statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع'],
-    remove: ['حذف حركات', () => 'اختر الحركة اللي بدك تحذفها']
+    remove: ['حذف حركات', () => 'اختر الحركة اللي بدك تحذفها'],
+    daily: ['كشف اليوم', () => 'كل حركات اليوم ووين راحت المبالغ']
   };
-  const ADMIN_PAGES = ['admin', 'statement', 'remove'];
+  const ADMIN_PAGES = ['admin', 'statement', 'remove', 'daily'];
   const ADMIN_PASSWORD = '123456';
   let adminUnlocked = false;
   let pendingPage = null;
@@ -827,7 +869,7 @@
     document.getElementById('pageSub').textContent = PAGES[page][1]();
     const backBtn = document.getElementById('backBtn');
     backBtn.classList.toggle('hidden', page === 'home');
-    backBtn.onclick = () => go(page === 'statement' || page === 'remove' ? 'admin' : 'home');
+    backBtn.onclick = () => go(['statement', 'remove', 'daily'].includes(page) ? 'admin' : 'home');
     document.getElementById('topbar').classList.toggle('home-mode', page === 'home');
     document.getElementById('heroDate').textContent = PAGES.home[1]();
     window.scrollTo(0, 0);
@@ -836,6 +878,7 @@
     if (page === 'receive') resetReceive();
     if (page === 'statement') renderStatement();
     if (page === 'remove') renderRemove();
+    if (page === 'daily') renderDaily();
   }
 
   // ---------- الرئيسية ----------
@@ -1024,6 +1067,84 @@
     toast('تم حذف الحركة');
   }
 
+  // ---------- كشف اليوم ----------
+  function openDaily() {
+    document.getElementById('dayPick').value = dayStr(new Date());
+    go('daily');
+  }
+  function setDay(offset) {
+    const d = new Date(); d.setDate(d.getDate() + offset);
+    document.getElementById('dayPick').value = dayStr(d);
+    renderDaily();
+  }
+  function fmtTime(iso) { const d = new Date(iso); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+
+  function renderDaily() {
+    const pick = document.getElementById('dayPick');
+    if (!pick.value) pick.value = dayStr(new Date());
+    const day = pick.value;
+    const [y, m, d] = day.split('-');
+    const nice = new Date(+y, +m - 1, +d).toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('dayHead').innerHTML =
+      `<img src="logo.jpg" alt="" class="print-logo"><h2>كشف يوم ${nice}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
+
+    const list = load().filter(e => localDay(e.date) === day);
+    const report = document.getElementById('dayReport');
+    if (!list.length) { report.innerHTML = '<div class="empty">لا توجد حركات بهاليوم</div>'; return; }
+
+    let total = 0, toBarbers = 0, toShop = 0;
+    const accounts = {};
+    Object.keys(PAYMENTS).forEach(k => accounts[k] = { count: 0, amount: 0 });
+    const per = BARBERS.map(() => ({ count: 0, amount: 0, barber: 0, shop: 0 }));
+    list.forEach(e => {
+      total += e.amount; toBarbers += e.barberShare; toShop += e.shopShare;
+      const a = accounts[payOf(e)]; a.count++; a.amount += e.amount;
+      const b = per[e.barber]; b.count++; b.amount += e.amount; b.barber += e.barberShare; b.shop += e.shopShare;
+    });
+    const stat = (label, value, gold) =>
+      `<div class="stat${gold ? ' gold' : ''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+
+    const accRows = Object.keys(PAYMENTS).map(k => `<tr>
+      <td>${accountName(k)}</td><td>${accounts[k].count}</td><td class="num">${money(accounts[k].amount)}</td></tr>`).join('');
+    const barberRows = per.map((b, i) => b.count ? `<tr>
+      <td>${BARBERS[i]}</td><td>${b.count}</td><td class="num">${money(b.amount)}</td>
+      <td class="num">${money(b.barber)}</td><td class="num">${money(b.shop)}</td></tr>` : '').join('');
+    const moveRows = list.map((e, i) => `<tr>
+      <td>${i + 1}</td><td>${fmtTime(e.date)}</td><td>${BARBERS[e.barber]}</td><td>${accountName(payOf(e))}</td>
+      <td class="num">${money(e.amount)}</td><td class="num">${money(e.barberShare)}</td><td class="num">${money(e.shopShare)}</td></tr>`).join('');
+
+    report.innerHTML = `
+      <div class="summary four">
+        ${stat('عدد الحركات', list.length)}
+        ${stat('إجمالي الدخل', money(total), true)}
+        ${stat('للحلاقين (60%)', money(toBarbers))}
+        ${stat('ربح المحل (40%)', money(toShop))}
+      </div>
+
+      <h3 class="rep-title">وين راحت المبالغ</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>الحساب</th><th>عدد الحركات</th><th>المبلغ</th></tr></thead>
+        <tbody>${accRows}</tbody>
+        <tfoot><tr><td>المجموع</td><td>${list.length}</td><td class="num">${money(total)}</td></tr></tfoot>
+      </table></div>
+
+      <h3 class="rep-title">الحلاقين</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>الحلاق</th><th>الحركات</th><th>المبلغ</th><th>للحلاق (60%)</th><th>للمحل (40%)</th></tr></thead>
+        <tbody>${barberRows}</tbody>
+        <tfoot><tr><td>المجموع</td><td>${list.length}</td><td class="num">${money(total)}</td>
+          <td class="num">${money(toBarbers)}</td><td class="num">${money(toShop)}</td></tr></tfoot>
+      </table></div>
+
+      <h3 class="rep-title">كل الحركات</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>الوقت</th><th>الحلاق</th><th>الحساب</th><th>المبلغ</th><th>للحلاق (60%)</th><th>للمحل (40%)</th></tr></thead>
+        <tbody>${moveRows}</tbody>
+        <tfoot><tr><td colspan="4">المجموع</td><td class="num">${money(total)}</td>
+          <td class="num">${money(toBarbers)}</td><td class="num">${money(toShop)}</td></tr></tfoot>
+      </table></div>`;
+  }
+
   // ---------- مشاركة الكشف كصورة ----------
   // على الآيفون (من أيقونة الشاشة الرئيسية أو من جوا تطبيق) الطباعة ما بتشتغل، فبنحوّل الكشف لصورة
   let h2cLoading = null;
@@ -1042,18 +1163,19 @@
   }
 
   let shotUrl = null;
-  async function shareStatement() {
-    const btn = document.getElementById('shareStmtBtn');
-    const label = document.getElementById('shareStmtLabel');
+  function shareStatement() { return shareSheet('printHead', 'report', 'shareStmtBtn', 'shareStmtLabel'); }
+  async function shareSheet(headId, reportId, btnId, labelId) {
+    const btn = document.getElementById(btnId);
+    const label = document.getElementById(labelId);
     btn.disabled = true;
     label.textContent = 'جاري التجهيز...';
     const sheet = document.createElement('div');
     sheet.className = 'sheet';
     const head = document.createElement('div');
     head.className = 'print-head';
-    head.innerHTML = document.getElementById('printHead').innerHTML;
+    head.innerHTML = document.getElementById(headId).innerHTML;
     sheet.appendChild(head);
-    sheet.insertAdjacentHTML('beforeend', document.getElementById('report').innerHTML);
+    sheet.insertAdjacentHTML('beforeend', document.getElementById(reportId).innerHTML);
     document.body.appendChild(sheet);
     try {
       await loadHtml2canvas();
