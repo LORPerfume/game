@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #14161b;
@@ -190,6 +190,14 @@
   }
   .quick button:hover { border-color: var(--gold); }
 
+  .amanah {
+    text-align: center; padding: 18px 16px 16px; margin-bottom: 16px; border-radius: 18px;
+    background: linear-gradient(180deg, rgba(214,168,91,.12), rgba(214,168,91,.04));
+    border: 1px solid rgba(214,168,91,.35);
+  }
+  .amanah .ayah { font-family: 'Amiri', 'Traditional Arabic', serif; font-size: 23px; line-height: 1.9; color: var(--gold-2); font-weight: 700; text-wrap: balance; }
+  .amanah .ref { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .amanah .dua { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(214,168,91,.35); font-size: 15px; font-weight: 600; line-height: 1.8; }
   .pays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .pay {
     border: 2px solid var(--border); background: var(--card-2); color: var(--text); border-radius: 14px;
@@ -539,6 +547,12 @@
 
   <!-- صفحة استلام مبلغ -->
   <section id="receive" class="hidden">
+    <div class="amanah">
+      <div class="ayah">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</div>
+      <div class="ref">سورة النساء، الآية 58</div>
+      <div class="dua">الله يباركلكم برزقكم، ويعينكم على حفظ الأمانة والحقوق.</div>
+    </div>
+
     <div class="card">
       <h3 class="section-title">١. اختر الحلاق</h3>
       <div class="barbers" id="barberButtons"></div>
