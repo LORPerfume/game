@@ -197,6 +197,7 @@
   }
   .amanah .ayah { font-family: 'Amiri', 'Traditional Arabic', serif; font-size: 23px; line-height: 1.9; color: var(--gold-2); font-weight: 700; text-wrap: balance; }
   .amanah .ref { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .home-amanah { margin: 18px 0 0; }
   .amanah .dua { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(214,168,91,.35); font-size: 15px; font-weight: 600; line-height: 1.8; }
   .pays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .pay {
@@ -454,6 +455,12 @@
       <span class="t">استلام مبلغ</span>
     </button>
 
+    <div class="amanah home-amanah">
+      <div class="ayah">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</div>
+      <div class="ref">سورة النساء، الآية 58</div>
+      <div class="dua">الله يباركلكم برزقكم، ويعينكم على حفظ الأمانة والحقوق.</div>
+    </div>
+
     <button class="admin-link" onclick="go('admin')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       الإدارة
@@ -547,12 +554,6 @@
 
   <!-- صفحة استلام مبلغ -->
   <section id="receive" class="hidden">
-    <div class="amanah">
-      <div class="ayah">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</div>
-      <div class="ref">سورة النساء، الآية 58</div>
-      <div class="dua">الله يباركلكم برزقكم، ويعينكم على حفظ الأمانة والحقوق.</div>
-    </div>
-
     <div class="card">
       <h3 class="section-title">١. اختر الحلاق</h3>
       <div class="barbers" id="barberButtons"></div>
