@@ -284,7 +284,7 @@
   .modal-card h3 { margin: 0 0 4px; font-size: 20px; }
   .modal-card p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
   .modal-card input {
-    width: 100%; text-align: center; font-size: 26px; letter-spacing: 8px; padding: 12px; margin-bottom: 8px;
+    width: 100%; text-align: center; font-size: 24px; letter-spacing: 4px; padding: 12px; margin-bottom: 8px;
     background: var(--bg-2); color: var(--text); border: 2px solid var(--border); border-radius: 14px; outline: 0; direction: ltr;
   }
   .modal-card input:focus { border-color: var(--gold); }
@@ -637,7 +637,7 @@
     <img class="logo" src="logo.jpg" alt="">
     <h3>الإدارة</h3>
     <p>أدخل كلمة السر</p>
-    <input id="pass" type="password" inputmode="numeric" autocomplete="off" onkeydown="if (event.key === 'Enter') tryLogin()">
+    <input id="pass" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if (event.key === 'Enter') tryLogin()">
     <div class="err" id="passErr" style="margin-top:0"></div>
     <div class="row2">
       <button class="btn gold" onclick="tryLogin()">دخول</button>
@@ -830,7 +830,12 @@
     daily: ['كشف اليوم', () => 'كل حركات اليوم ووين راحت المبالغ']
   };
   const ADMIN_PAGES = ['admin', 'statement', 'remove', 'daily'];
-  const ADMIN_PASSWORD = '123456';
+  // بصمة SHA-256 لكلمة سر الإدارة، لحتى ما تكون مكتوبة كما هي بالكود
+  const ADMIN_PASSWORD_HASH = 'ddd94b58468b0fab416d7f5a1a18855b2f74949d71b8b21d26dca6a69487dda5';
+  async function sha256(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
   let adminUnlocked = false;
   let pendingPage = null;
 
@@ -845,9 +850,9 @@
     document.getElementById('loginModal').classList.add('hidden');
     pendingPage = null;
   }
-  function tryLogin() {
+  async function tryLogin() {
     const input = document.getElementById('pass');
-    if (input.value === ADMIN_PASSWORD) {
+    if (await sha256(input.value) === ADMIN_PASSWORD_HASH) {
       adminUnlocked = true;
       const page = pendingPage;
       closeLogin();
