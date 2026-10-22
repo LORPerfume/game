@@ -1058,7 +1058,8 @@
       </tr>`).join('');
       foot = `<td class="num">${money(totalAmount)}</td><td class="num">${money(totalBarber)}</td><td class="num">${money(totalShop)}</td>`;
     } else {
-      summary = stat('عدد الحركات', list.length) + stat('إجمالي المبالغ', money(totalAmount)) + stat('الرصيد (60%)', money(totalBarber), true);
+      summary = stat('عدد الحركات', list.length) + stat('إجمالي المبالغ', money(totalAmount)) +
+        stat('نسبة الحلاق (60%)', money(totalBarber), true) + stat('نسبة المحل (40%)', money(totalShop));
       head = '<th>#</th><th>التاريخ</th><th>الدفع</th><th>المبلغ الكامل</th><th>النصيب (60%)</th>';
       rows = list.map((e, i) => `<tr>
         <td>${i + 1}</td><td>${fmtDate(e.date)}</td><td><span class="pay-tag">${payName(e)}</span></td>
@@ -1068,7 +1069,7 @@
     }
 
     document.getElementById('report').innerHTML = `
-      <div class="summary">${summary}</div>
+      <div class="summary${isShop ? '' : ' four'}">${summary}</div>
       <div class="table-wrap">
         <table>
           <thead><tr>${head}<th class="no-print"></th></tr></thead>
