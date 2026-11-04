@@ -266,6 +266,22 @@
   .rep-title:first-child { margin-top: 0; }
   .sheet .rep-title { color: #000; }
   .sheet .summary.four { grid-template-columns: repeat(4, 1fr); }
+  .summary.six { grid-template-columns: repeat(3, 1fr); }
+  .stat.paid .value { color: var(--red); }
+  .sheet .stat.paid .value { color: #000; }
+  .sheet .summary.six { grid-template-columns: repeat(3, 1fr); }
+  .barber .bal { font-size: 13px; color: var(--muted); margin-top: 2px; direction: ltr; }
+  .barber .bal.has { color: var(--green); font-weight: 700; }
+  .field-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: stretch; }
+  .field-row > * { min-width: 0; }
+  .field-row .btn { width: auto; padding: 0 14px; font-size: 15px; white-space: nowrap; }
+  .note-input {
+    width: 100%; padding: 12px 14px; font-size: 16px; border-radius: 14px; outline: 0; margin-top: 10px;
+    background: var(--bg-2); color: var(--text); border: 2px solid var(--border);
+  }
+  .note-input:focus { border-color: var(--gold); }
+  .payout-due { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
+  .payout-due b { color: var(--green); direction: ltr; display: inline-block; }
   .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
   th, td { padding: 11px 10px; text-align: center; white-space: nowrap; }
@@ -362,7 +378,7 @@
     .barbers { grid-template-columns: repeat(2, 1fr); }
     .stat .value { font-size: 18px; }
     .summary .stat .value { font-size: 16px; }
-    .summary.four { grid-template-columns: repeat(2, 1fr); }
+    .summary.four, .summary.six { grid-template-columns: repeat(2, 1fr); }
     .action .t { font-size: 20px; }
     table { font-size: 13px; }
     th, td { white-space: normal; padding: 9px 5px; }
@@ -485,6 +501,11 @@
       <span><span class="t">كشف حساب</span><span class="d">كشف الحلاقين وصندوق المحل وكليك وفيزا مع الطباعة</span></span>
     </button>
 
+    <button class="action ghost" onclick="go('payout')">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span>
+      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق، وبتنخصم من رصيده بكشف حسابه</span></span>
+    </button>
+
     <button class="action ghost danger" onclick="go('remove')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span>
       <span><span class="t">حذف حركات</span><span class="d">حذف مبلغ انسجل بالغلط</span></span>
@@ -540,6 +561,37 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         طباعة
       </button>
+    </div>
+  </section>
+
+  <!-- سند صرف -->
+  <section id="payout" class="hidden">
+    <div class="card">
+      <h3 class="section-title">١. اختر الحلاق (تحت كل اسم الباقي إله)</h3>
+      <div class="barbers" id="payoutBarbers"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">٢. المبلغ المصروف</h3>
+      <div class="field-row">
+        <div class="amount-box">
+          <input id="payoutAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="updatePayout()">
+        </div>
+        <button class="btn dark" onclick="fillPayout()">كامل الباقي</button>
+      </div>
+      <input id="payoutNote" class="note-input" type="text" placeholder="ملاحظة (اختياري)" maxlength="80">
+      <div class="payout-due" id="payoutDue"></div>
+    </div>
+
+    <button class="btn gold" id="payoutBtn" onclick="savePayout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      حفظ سند الصرف
+    </button>
+    <div class="err" id="payoutErr"></div>
+
+    <div class="card" style="margin-top:16px">
+      <h3 class="section-title">آخر سندات الصرف</h3>
+      <div class="del-list" id="payoutList"></div>
     </div>
   </section>
 
@@ -715,14 +767,26 @@
   // نسخة محلية من البيانات، فالبرنامج بيشتغل والحركات بتنحفظ حتى لو انقطع النت
   db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   const entriesRef = db.collection('entries');
+  // سندات الصرف للحلاقين
+  const payoutsRef = db.collection('payouts');
   const MIGRATED_KEY = 'salon_migrated_v1';
 
   let entries = [];
+  let payouts = [];
   let unsubscribe = null;
+  let unsubscribePayouts = null;
   let currentPage = 'home';
 
   // كل الحركات، مرتبة من الأقدم للأحدث
   function load() { return entries.slice(); }
+  function loadPayouts() { return payouts.slice(); }
+
+  // الباقي للحلاق = مجموع نسبته (60%) ناقص سندات الصرف، من البداية
+  function barberBalance(i) {
+    const earned = entries.reduce((t, e) => e.barber === i ? t + e.barberShare : t, 0);
+    const paid = payouts.reduce((t, p) => p.barber === i ? t + p.amount : t, 0);
+    return round2(earned - paid);
+  }
 
   function newId() { return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
 
@@ -748,6 +812,7 @@
     if (currentPage === 'statement') renderStatement();
     if (currentPage === 'remove') renderRemove();
     if (currentPage === 'daily') renderDaily();
+    if (currentPage === 'payout') renderPayout();
   }
 
   // رفع الحركات اللي كانت محفوظة على هالجهاز قبل الربط، مرة وحدة
@@ -777,6 +842,10 @@
       setSync('offline');
       toast('ما قدرت أجيب البيانات: ' + (err.code === 'permission-denied' ? 'ما في صلاحية' : 'مشكلة بالاتصال'));
     });
+    unsubscribePayouts = payoutsRef.onSnapshot(snap => {
+      payouts = snap.docs.map(d => d.data()).sort((a, b) => a.date.localeCompare(b.date));
+      rerender();
+    }, () => {});
   }
 
   auth.onAuthStateChanged(user => {
@@ -786,7 +855,9 @@
       if (!unsubscribe) startSync();
     } else {
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      if (unsubscribePayouts) { unsubscribePayouts(); unsubscribePayouts = null; }
       entries = [];
+      payouts = [];
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('authForm').classList.remove('hidden');
     }
@@ -843,9 +914,10 @@
     admin: ['الإدارة', () => 'ملخص اليوم وكشوف الحساب'],
     statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع'],
     remove: ['حذف حركات', () => 'اختر الحركة اللي بدك تحذفها'],
+    payout: ['سند صرف', () => 'صرف نسبة الحلاق'],
     daily: ['كشف اليوم', () => 'كل حركات اليوم ووين راحت المبالغ']
   };
-  const ADMIN_PAGES = ['admin', 'statement', 'remove', 'daily'];
+  const ADMIN_PAGES = ['admin', 'statement', 'remove', 'daily', 'payout'];
   // بصمة SHA-256 لكلمة سر الإدارة، لحتى ما تكون مكتوبة كما هي بالكود
   const ADMIN_PASSWORD_HASH = 'ddd94b58468b0fab416d7f5a1a18855b2f74949d71b8b21d26dca6a69487dda5';
   async function sha256(text) {
@@ -890,7 +962,7 @@
     document.getElementById('pageSub').textContent = PAGES[page][1]();
     const backBtn = document.getElementById('backBtn');
     backBtn.classList.toggle('hidden', page === 'home');
-    backBtn.onclick = () => go(['statement', 'remove', 'daily'].includes(page) ? 'admin' : 'home');
+    backBtn.onclick = () => go(['statement', 'remove', 'daily', 'payout'].includes(page) ? 'admin' : 'home');
     document.getElementById('topbar').classList.toggle('home-mode', page === 'home');
     document.getElementById('heroDate').textContent = PAGES.home[1]();
     window.scrollTo(0, 0);
@@ -900,6 +972,7 @@
     if (page === 'statement') renderStatement();
     if (page === 'remove') renderRemove();
     if (page === 'daily') renderDaily();
+    if (page === 'payout') resetPayout();
   }
 
   // ---------- الرئيسية ----------
@@ -1036,7 +1109,12 @@
     document.getElementById('printHead').innerHTML =
       `<img src="logo.jpg" alt="" class="print-logo"><h2>${title}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>${range} · تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
 
-    if (!list.length) {
+    const pays = isShop ? [] : loadPayouts().filter(p => {
+      const day = localDay(p.date);
+      return p.barber === Number(who) && (!from || day >= from) && (!to || day <= to);
+    });
+
+    if (!list.length && !pays.length) {
       document.getElementById('report').innerHTML = `<div class="empty">لا توجد حركات في هذه الفترة</div>`;
       return;
     }
@@ -1058,8 +1136,11 @@
       </tr>`).join('');
       foot = `<td class="num">${money(totalAmount)}</td><td class="num">${money(totalBarber)}</td><td class="num">${money(totalShop)}</td>`;
     } else {
+      const totalPaid = pays.reduce((t, p) => t + p.amount, 0);
       summary = stat('عدد الحركات', list.length) + stat('إجمالي المبالغ', money(totalAmount)) +
-        stat('نسبة الحلاق (60%)', money(totalBarber), true) + stat('نسبة المحل (40%)', money(totalShop));
+        stat('نسبة الحلاق (60%)', money(totalBarber)) + stat('نسبة المحل (40%)', money(totalShop)) +
+        `<div class="stat paid"><div class="label">المصروف له (سندات)</div><div class="value">${money(totalPaid)}</div></div>` +
+        stat('الباقي له', money(totalBarber - totalPaid), true);
       head = '<th>#</th><th>التاريخ</th><th>الدفع</th><th>المبلغ الكامل</th><th>النصيب (60%)</th>';
       rows = list.map((e, i) => `<tr>
         <td>${i + 1}</td><td>${fmtDate(e.date)}</td><td><span class="pay-tag">${payName(e)}</span></td>
@@ -1068,8 +1149,7 @@
       foot = `<td class="num">${money(totalAmount)}</td><td class="num">${money(totalBarber)}</td>`;
     }
 
-    document.getElementById('report').innerHTML = `
-      <div class="summary${isShop ? '' : ' four'}">${summary}</div>
+    const entriesTable = list.length ? `
       <div class="table-wrap">
         <table>
           <thead><tr>${head}<th class="no-print"></th></tr></thead>
@@ -1078,7 +1158,105 @@
             <td colspan="3">المجموع (${list.length} حركة)</td>${foot}<td class="no-print"></td>
           </tr></tfoot>
         </table>
-      </div>`;
+      </div>` : '';
+
+    document.getElementById('report').innerHTML = `
+      <div class="summary${isShop ? '' : ' six'}">${summary}</div>
+      ${entriesTable}
+      ${pays.length ? '<h3 class="rep-title">سندات الصرف</h3>' + payoutsTable(pays) : ''}`;
+  }
+
+  function payoutsTable(pays, withBarber) {
+    const total = pays.reduce((t, p) => t + p.amount, 0);
+    const rows = pays.map((p, i) => `<tr>
+      <td>${i + 1}</td><td>${fmtDate(p.date)}</td>${withBarber ? `<td>${BARBERS[p.barber]}</td>` : ''}
+      <td>${p.note ? escapeHtml(p.note) : '—'}</td><td class="num">${money(p.amount)}</td>
+      <td class="no-print"><button class="del" title="حذف" onclick="deletePayout(${p.id})">${TRASH}</button></td></tr>`).join('');
+    return `<div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>التاريخ</th>${withBarber ? '<th>الحلاق</th>' : ''}<th>ملاحظة</th><th>المبلغ</th><th class="no-print"></th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="${withBarber ? 4 : 3}">مجموع المصروف (${pays.length} سند)</td><td class="num">${money(total)}</td><td class="no-print"></td></tr></tfoot>
+    </table></div>`;
+  }
+
+  function escapeHtml(t) {
+    return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- سند صرف ----------
+  let payoutBarber = null;
+  function resetPayout() {
+    payoutBarber = null;
+    document.getElementById('payoutAmount').value = '';
+    document.getElementById('payoutNote').value = '';
+    document.getElementById('payoutErr').textContent = '';
+    renderPayout();
+  }
+  function renderPayout() {
+    document.getElementById('payoutBarbers').innerHTML = BARBERS.map((n, i) => {
+      const bal = barberBalance(i);
+      return `<button class="barber${payoutBarber === i ? ' sel' : ''}" onclick="pickPayoutBarber(${i})">
+        ${avatar(i)}<div class="name">${n}</div><div class="bal${bal > 0 ? ' has' : ''}">${money(bal)}</div></button>`;
+    }).join('');
+    const recent = loadPayouts().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20);
+    document.getElementById('payoutList').innerHTML = recent.length ? recent.map(p => `
+      <div class="item">
+        ${avatar(p.barber, true)}
+        <div class="info">
+          <b>${BARBERS[p.barber]}</b>
+          <div class="meta"><span>${fmtDate(p.date)}</span>${p.note ? `<span>${escapeHtml(p.note)}</span>` : ''}</div>
+        </div>
+        <div class="amt">${money(p.amount)}</div>
+        <button class="del-btn" title="حذف" onclick="deletePayout(${p.id})">${TRASH}</button>
+      </div>`).join('') : '<div class="empty">ما في سندات صرف لحد هلق</div>';
+    updatePayout();
+  }
+  function pickPayoutBarber(i) {
+    payoutBarber = i;
+    renderPayout();
+    document.getElementById('payoutAmount').focus();
+  }
+  function fillPayout() {
+    if (payoutBarber === null) { document.getElementById('payoutErr').textContent = 'اختر الحلاق أولاً'; return; }
+    document.getElementById('payoutAmount').value = Math.max(0, barberBalance(payoutBarber));
+    updatePayout();
+  }
+  function updatePayout() {
+    const amount = parseFloat(document.getElementById('payoutAmount').value) || 0;
+    const due = document.getElementById('payoutDue');
+    if (payoutBarber === null) { due.textContent = ''; }
+    else {
+      const bal = barberBalance(payoutBarber);
+      due.innerHTML = `الباقي لـ ${BARBERS[payoutBarber]}: <b>${money(bal)}</b>` +
+        (amount > 0 ? ` · بعد السند: <b>${money(bal - amount)}</b>` : '');
+    }
+    document.getElementById('payoutBtn').disabled = payoutBarber === null || !(amount > 0);
+    document.getElementById('payoutErr').textContent = '';
+  }
+  function savePayout() {
+    const err = document.getElementById('payoutErr');
+    const amount = round2(parseFloat(document.getElementById('payoutAmount').value));
+    if (payoutBarber === null) { err.textContent = 'اختر الحلاق أولاً'; return; }
+    if (!(amount > 0)) { err.textContent = 'أدخل مبلغ صحيح'; return; }
+    const bal = barberBalance(payoutBarber);
+    if (amount > bal && !confirm(`المبلغ ${money(amount)} أكبر من الباقي لـ ${BARBERS[payoutBarber]} (${money(bal)}). بدك تكمل؟`)) return;
+    const p = {
+      id: newId(),
+      date: new Date().toISOString(),
+      barber: payoutBarber,
+      amount,
+      note: document.getElementById('payoutNote').value.trim()
+    };
+    payoutsRef.doc(String(p.id)).set(p).catch(writeError);
+    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]}، الباقي إله ${money(bal - amount)}`);
+    resetPayout();
+  }
+  function deletePayout(id) {
+    const p = payouts.find(x => x.id === id);
+    if (!p) return;
+    if (!confirm(`حذف سند صرف ${BARBERS[p.barber]} بمبلغ ${money(p.amount)} بتاريخ ${fmtDate(p.date)}؟`)) return;
+    payoutsRef.doc(String(id)).delete().catch(writeError);
+    toast('تم حذف السند');
   }
 
   function deleteEntry(id) {
@@ -1111,8 +1289,11 @@
       `<img src="logo.jpg" alt="" class="print-logo"><h2>كشف يوم ${nice}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
 
     const list = load().filter(e => localDay(e.date) === day);
+    const dayPays = loadPayouts().filter(p => localDay(p.date) === day);
     const report = document.getElementById('dayReport');
-    if (!list.length) { report.innerHTML = '<div class="empty">لا توجد حركات بهاليوم</div>'; return; }
+    if (!list.length && !dayPays.length) { report.innerHTML = '<div class="empty">لا توجد حركات بهاليوم</div>'; return; }
+    const paysSection = dayPays.length ? '<h3 class="rep-title">سندات الصرف</h3>' + payoutsTable(dayPays, true) : '';
+    if (!list.length) { report.innerHTML = paysSection; return; }
 
     let total = 0, toBarbers = 0, toShop = 0;
     const accounts = {};
@@ -1164,7 +1345,8 @@
         <tbody>${moveRows}</tbody>
         <tfoot><tr><td colspan="4">المجموع</td><td class="num">${money(total)}</td>
           <td class="num">${money(toBarbers)}</td><td class="num">${money(toShop)}</td></tr></tfoot>
-      </table></div>`;
+      </table></div>
+      ${paysSection}`;
   }
 
   // ---------- مشاركة الكشف كصورة ----------
@@ -1249,7 +1431,7 @@
 
   async function exportBackup() {
     const list = load();
-    const data = JSON.stringify({ app: '97-hair-design', version: 1, exportedAt: new Date().toISOString(), entries: list }, null, 1);
+    const data = JSON.stringify({ app: '97-hair-design', version: 2, exportedAt: new Date().toISOString(), entries: list, payouts: loadPayouts() }, null, 1);
     const name = `97-hair-design-backup-${dayStr(new Date())}.json`;
     const file = new File([data], name, { type: 'application/json' });
 
@@ -1281,17 +1463,25 @@
       [e.amount, e.barberShare, e.shopShare].every(n => typeof n === 'number' && isFinite(n));
   }
 
+  function isValidPayout(p) {
+    return p && typeof p.id === 'number' && typeof p.date === 'string' && !isNaN(new Date(p.date)) &&
+      Number.isInteger(p.barber) && p.barber >= 0 && p.barber < BARBERS.length &&
+      typeof p.amount === 'number' && isFinite(p.amount);
+  }
+
   function importBackup(input) {
     const f = input.files[0];
     input.value = '';
     if (!f) return;
     const reader = new FileReader();
     reader.onload = () => {
-      let entries;
+      let entries, pays;
       try {
         const data = JSON.parse(reader.result);
         entries = Array.isArray(data) ? data : data.entries;
+        pays = Array.isArray(data) ? [] : (data.payouts || []);
         if (!Array.isArray(entries) || !entries.every(isValidEntry)) throw new Error('bad');
+        if (!Array.isArray(pays) || !pays.every(isValidPayout)) throw new Error('bad');
       } catch (e) {
         alert('هاد الملف مش نسخة احتياطية صحيحة من البرنامج');
         return;
@@ -1299,10 +1489,19 @@
       const current = load();
       const ids = new Set(current.map(e => e.id));
       const fresh = entries.filter(e => !ids.has(e.id));
-      if (!fresh.length) { toast('كل الحركات اللي بالملف موجودة أصلاً'); return; }
-      if (!confirm(`الملف فيه ${entries.length} حركة، منها ${fresh.length} مش موجودة هلق.\nبدك تضيفهم؟ (الحركات الموجودة ما بتتغير)`)) return;
-      writeEntries(fresh)
-        .then(() => toast(`✓ تم استرجاع ${fresh.length} حركة`))
+      const payIds = new Set(payouts.map(p => p.id));
+      const freshPays = pays.filter(p => !payIds.has(p.id));
+      if (!fresh.length && !freshPays.length) { toast('كل اللي بالملف موجود أصلاً'); return; }
+      if (!confirm(`الملف فيه ${fresh.length} حركة و${freshPays.length} سند صرف مش موجودين هلق.\nبدك تضيفهم؟ (الموجود ما بيتغير)`)) return;
+      (async () => {
+        await writeEntries(fresh);
+        for (let i = 0; i < freshPays.length; i += 400) {
+          const batch = db.batch();
+          freshPays.slice(i, i + 400).forEach(p => batch.set(payoutsRef.doc(String(p.id)), p));
+          await batch.commit();
+        }
+      })()
+        .then(() => toast(`✓ تم استرجاع ${fresh.length} حركة و${freshPays.length} سند`))
         .catch(writeError);
     };
     reader.readAsText(f);
