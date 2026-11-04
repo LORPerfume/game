@@ -503,7 +503,7 @@
 
     <button class="action ghost" onclick="go('payout')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span>
-      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق، وبتنخصم من رصيده بكشف حسابه</span></span>
+      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق، بينخصم من رصيده ومن صندوق المحل</span></span>
     </button>
 
     <button class="action ghost danger" onclick="go('remove')">
@@ -741,10 +741,13 @@
   function payName(e) { return PAYMENTS[payOf(e)].name; }
   function accountName(k) { return PAYMENTS[k].account; }
   // المبلغ كامل بينزل بالحساب حسب طريقة الدفع
-  function accountsBreakdown(list) {
+  // سندات الصرف بتنصرف كاش، فبتنخصم من صندوق المحل
+  const PAYOUT_ACCOUNT = 'cash';
+  function accountsBreakdown(list, pays = []) {
     const sums = {};
     Object.keys(PAYMENTS).forEach(k => sums[k] = 0);
     list.forEach(e => { sums[payOf(e)] += e.amount; });
+    pays.forEach(p => { sums[PAYOUT_ACCOUNT] -= p.amount; });
     return Object.keys(PAYMENTS).map(k => `
       <div class="stat"><div class="label">${PAYMENTS[k].icon}${accountName(k)}</div><div class="value">${money(sums[k])}</div></div>`).join('');
   }
@@ -914,7 +917,7 @@
     admin: ['الإدارة', () => 'ملخص اليوم وكشوف الحساب'],
     statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع'],
     remove: ['حذف حركات', () => 'اختر الحركة اللي بدك تحذفها'],
-    payout: ['سند صرف', () => 'صرف نسبة الحلاق'],
+    payout: ['سند صرف', () => 'بينخصم من رصيد الحلاق ومن صندوق المحل'],
     daily: ['كشف اليوم', () => 'كل حركات اليوم ووين راحت المبالغ']
   };
   const ADMIN_PAGES = ['admin', 'statement', 'remove', 'daily', 'payout'];
@@ -988,7 +991,8 @@
     document.getElementById('tTotal').textContent = money(total);
     document.getElementById('tShop').textContent = money(shop);
     document.getElementById('tCount').textContent = list.length;
-    document.getElementById('tPays').innerHTML = accountsBreakdown(list);
+    document.getElementById('tPays').innerHTML =
+      accountsBreakdown(list, loadPayouts().filter(p => localDay(p.date) === today));
     renderBackupNote();
 
     const rows = per.map((p, i) => p.count ? `
@@ -1109,9 +1113,10 @@
     document.getElementById('printHead').innerHTML =
       `<img src="logo.jpg" alt="" class="print-logo"><h2>${title}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>${range} · تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
 
-    const pays = isShop ? [] : loadPayouts().filter(p => {
+    const isPayoutAccount = who === PAYOUT_ACCOUNT;
+    const pays = isShop && !isPayoutAccount ? [] : loadPayouts().filter(p => {
       const day = localDay(p.date);
-      return p.barber === Number(who) && (!from || day >= from) && (!to || day <= to);
+      return (isShop || p.barber === Number(who)) && (!from || day >= from) && (!to || day <= to);
     });
 
     if (!list.length && !pays.length) {
@@ -1128,7 +1133,15 @@
     let summary, head, rows, foot;
     if (isShop) {
       // حساب (صندوق المحل / كليك / فيزا): المبلغ كامل بينزل بالحساب
-      summary = stat('رصيد الحساب', money(totalAmount), true) + stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
+      if (isPayoutAccount) {
+        const totalPaid = pays.reduce((t, p) => t + p.amount, 0);
+        summary = stat('عدد الحركات', list.length) + stat('المبالغ اللي نزلت', money(totalAmount)) +
+          `<div class="stat paid"><div class="label">سندات الصرف للحلاقين</div><div class="value">${money(totalPaid)}</div></div>` +
+          stat('رصيد الصندوق', money(totalAmount - totalPaid), true) +
+          stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
+      } else {
+        summary = stat('رصيد الحساب', money(totalAmount), true) + stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
+      }
       head = '<th>#</th><th>التاريخ</th><th>الحلاق</th><th>المبلغ</th><th>للحلاق (60%)</th><th>للمحل (40%)</th>';
       rows = list.map((e, i) => `<tr>
         <td>${i + 1}</td><td>${fmtDate(e.date)}</td><td>${BARBERS[e.barber]}</td>
@@ -1161,9 +1174,9 @@
       </div>` : '';
 
     document.getElementById('report').innerHTML = `
-      <div class="summary${isShop ? '' : ' six'}">${summary}</div>
+      <div class="summary${isShop && !isPayoutAccount ? '' : ' six'}">${summary}</div>
       ${entriesTable}
-      ${pays.length ? '<h3 class="rep-title">سندات الصرف</h3>' + payoutsTable(pays) : ''}`;
+      ${pays.length ? '<h3 class="rep-title">سندات الصرف' + (isShop ? ' (انخصمت من الصندوق)' : '') + '</h3>' + payoutsTable(pays, isShop) : ''}`;
   }
 
   function payoutsTable(pays, withBarber) {
@@ -1248,7 +1261,7 @@
       note: document.getElementById('payoutNote').value.trim()
     };
     payoutsRef.doc(String(p.id)).set(p).catch(writeError);
-    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]}، الباقي إله ${money(bal - amount)}`);
+    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]} من ${accountName(PAYOUT_ACCOUNT)}، الباقي إله ${money(bal - amount)}`);
     resetPayout();
   }
   function deletePayout(id) {
@@ -1307,8 +1320,11 @@
     const stat = (label, value, gold) =>
       `<div class="stat${gold ? ' gold' : ''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
 
+    const dayPaid = dayPays.reduce((t, p) => t + p.amount, 0);
     const accRows = Object.keys(PAYMENTS).map(k => `<tr>
-      <td>${accountName(k)}</td><td>${accounts[k].count}</td><td class="num">${money(accounts[k].amount)}</td></tr>`).join('');
+      <td>${accountName(k)}</td><td>${accounts[k].count}</td><td class="num">${money(accounts[k].amount)}</td></tr>`).join('') +
+      (dayPaid ? `<tr><td>سندات صرف (من ${accountName(PAYOUT_ACCOUNT)})</td><td>${dayPays.length}</td><td class="num">-${money(dayPaid)}</td></tr>
+        <tr><td><b>الباقي بـ ${accountName(PAYOUT_ACCOUNT)}</b></td><td></td><td class="num"><b>${money(accounts[PAYOUT_ACCOUNT].amount - dayPaid)}</b></td></tr>` : '');
     const barberRows = per.map((b, i) => b.count ? `<tr>
       <td>${BARBERS[i]}</td><td>${b.count}</td><td class="num">${money(b.amount)}</td>
       <td class="num">${money(b.barber)}</td><td class="num">${money(b.shop)}</td></tr>` : '').join('');
