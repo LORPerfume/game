@@ -747,6 +747,9 @@
   const INITIALS = ['ق', 'ب', 'م', 'أ', 'ي', 'مس'];
   const COLORS = ['#5b8def', '#3ecf8e', '#e8743b', '#b06ad9', '#e05a8a', '#2bb3c0'];
   const BARBER_PCT = 0.60;
+  // نسبة خاصة لبعض الحلاقين (بالحساب بس، العناوين بتضل 60% / 40%). المفتاح ترتيب الحلاق
+  const BARBER_RATES = { 1: 0.70 }; // بشار
+  function barberRate(i) { return BARBER_RATES[i] ?? BARBER_PCT; }
   const STORE_KEY = 'salon_entries_v1';
   const BACKUP_KEY = 'salon_last_backup';
   const QUICK = [5, 10, 15, 20, 30, 50];
@@ -1066,7 +1069,7 @@
 
   function updatePreview() {
     const amount = parseFloat(document.getElementById('amount').value) || 0;
-    const b = round2(amount * BARBER_PCT);
+    const b = round2(amount * (selectedBarber === null ? BARBER_PCT : barberRate(selectedBarber)));
     document.getElementById('bVal').textContent = money(b);
     document.getElementById('sVal').textContent = money(amount - b);
     document.getElementById('bLabel').textContent =
@@ -1083,7 +1086,7 @@
     if (selectedBarber === null) { err.textContent = 'اختر الحلاق أولاً'; return; }
     if (!(amount > 0)) { err.textContent = 'أدخل قيمة مبلغ صحيحة'; return; }
 
-    const barberShare = round2(amount * BARBER_PCT);
+    const barberShare = round2(amount * barberRate(selectedBarber));
     const entry = {
       id: newId(),
       date: new Date().toISOString(),
