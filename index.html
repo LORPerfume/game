@@ -283,6 +283,9 @@
   .note-input:focus { border-color: var(--gold); }
   .date-label { display: block; color: var(--muted); font-size: 13px; margin-top: 12px; }
   .date-input { margin-top: 6px; color-scheme: dark; }
+  .purge { border-color: rgba(239,91,91,.4); }
+  .purge-btn { margin-top: 12px; background: rgba(239,91,91,.15); color: var(--red); border: 1px solid rgba(239,91,91,.5); }
+  .purge-btn:disabled { opacity: .45; cursor: not-allowed; }
   .payout-due { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
   .payout-due b { color: var(--green); direction: ltr; display: inline-block; }
   .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
@@ -612,6 +615,15 @@
     </div>
     <div class="card">
       <div class="del-list" id="removeList"></div>
+    </div>
+
+    <div class="card purge">
+      <h3 class="section-title">حذف كل شي قبل تاريخ</h3>
+      <label class="date-label" for="purgeDate" style="margin-top:0">احذف الحركات وسندات الصرف اللي قبل:</label>
+      <input id="purgeDate" class="note-input date-input" type="date" onchange="renderPurge()">
+      <div class="payout-due" id="purgeInfo"></div>
+      <button class="btn purge-btn" id="purgeBtn" onclick="purgeBefore()" disabled>حذف</button>
+      <div class="backup-note warn">الحذف نهائي ومن كل الأجهزة. اعمل نسخة احتياطية من الإدارة قبل.</div>
     </div>
   </section>
 
@@ -1563,7 +1575,53 @@
   let removeRange = 'today';
   function pickRemoveRange(k) { removeRange = k; renderRemove(); }
 
+  // ---------- حذف كل شي قبل تاريخ ----------
+  function purgeTargets() {
+    const day = document.getElementById('purgeDate').value;
+    if (!day) return { day, ents: [], pays: [] };
+    return {
+      day,
+      ents: entries.filter(e => localDay(e.date) < day),
+      pays: payouts.filter(p => localDay(p.date) < day)
+    };
+  }
+  function renderPurge() {
+    const input = document.getElementById('purgeDate');
+    if (!input.value) {
+      const now = new Date();
+      input.value = dayStr(new Date(now.getFullYear(), now.getMonth(), 1));
+    }
+    const { day, ents, pays } = purgeTargets();
+    const total = ents.reduce((t, e) => t + e.amount, 0);
+    document.getElementById('purgeInfo').innerHTML = (ents.length || pays.length)
+      ? `رح ينحذف <b>${ents.length}</b> حركة (مجموعها ${money(total)}) و<b>${pays.length}</b> سند صرف، كلهم قبل ${day}`
+      : `ما في شي قبل ${day}`;
+    document.getElementById('purgeBtn').disabled = !(ents.length || pays.length);
+  }
+  async function purgeBefore() {
+    const { day, ents, pays } = purgeTargets();
+    if (!ents.length && !pays.length) return;
+    if (!confirm(`متأكد؟ رح تنحذف ${ents.length} حركة و${pays.length} سند صرف قبل ${day}، من كل الأجهزة، وما بترجع إلا من نسخة احتياطية.`)) return;
+    const btn = document.getElementById('purgeBtn');
+    btn.disabled = true;
+    btn.textContent = 'جاري الحذف...';
+    try {
+      const refs = ents.map(e => entriesRef.doc(String(e.id))).concat(pays.map(p => payoutsRef.doc(String(p.id))));
+      for (let i = 0; i < refs.length; i += 400) {
+        const batch = db.batch();
+        refs.slice(i, i + 400).forEach(r => batch.delete(r));
+        await batch.commit();
+      }
+      toast(`✓ انحذفت ${ents.length} حركة و${pays.length} سند صرف`);
+    } catch (e) {
+      writeError();
+    }
+    btn.textContent = 'حذف';
+    renderPurge();
+  }
+
   function renderRemove() {
+    renderPurge();
     document.getElementById('removeChips').innerHTML = Object.keys(REMOVE_RANGES).map(k =>
       `<button class="${removeRange === k ? 'on' : ''}" onclick="pickRemoveRange('${k}')">${REMOVE_RANGES[k]}</button>`).join('');
     const now = new Date();
