@@ -201,6 +201,7 @@
   .home-amanah { margin: 18px 0 0; }
   .amanah .dua { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(214,168,91,.35); font-size: 15px; font-weight: 600; line-height: 1.8; }
   .pays { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pays.two { grid-template-columns: repeat(2, 1fr); }
   .pay {
     border: 2px solid var(--border); background: var(--card-2); color: var(--text); border-radius: 14px;
     padding: 14px 6px; cursor: pointer; font-size: 17px; font-weight: 800;
@@ -503,7 +504,7 @@
 
     <button class="action ghost" onclick="go('payout')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span>
-      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق، بينخصم من رصيده ومن صندوق المحل</span></span>
+      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق نقداً أو كليك، وبينخصم من رصيده ومن الحساب</span></span>
     </button>
 
     <button class="action ghost danger" onclick="go('remove')">
@@ -581,6 +582,11 @@
       </div>
       <input id="payoutNote" class="note-input" type="text" placeholder="ملاحظة (اختياري)" maxlength="80">
       <div class="payout-due" id="payoutDue"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">٣. طريقة الصرف</h3>
+      <div class="pays two" id="payoutFromButtons"></div>
     </div>
 
     <button class="btn gold" id="payoutBtn" onclick="savePayout()">
@@ -741,13 +747,14 @@
   function payName(e) { return PAYMENTS[payOf(e)].name; }
   function accountName(k) { return PAYMENTS[k].account; }
   // المبلغ كامل بينزل بالحساب حسب طريقة الدفع
-  // سندات الصرف بتنصرف كاش، فبتنخصم من صندوق المحل
-  const PAYOUT_ACCOUNT = 'cash';
+  // سند الصرف بينصرف نقداً (من صندوق المحل) أو كليك، وبينخصم من الحساب اللي انصرف منه
+  const PAYOUT_FROM = ['cash', 'cliq'];
+  function payoutFrom(p) { return PAYOUT_FROM.includes(p.from) ? p.from : 'cash'; }
   function accountsBreakdown(list, pays = []) {
     const sums = {};
     Object.keys(PAYMENTS).forEach(k => sums[k] = 0);
     list.forEach(e => { sums[payOf(e)] += e.amount; });
-    pays.forEach(p => { sums[PAYOUT_ACCOUNT] -= p.amount; });
+    pays.forEach(p => { sums[payoutFrom(p)] -= p.amount; });
     return Object.keys(PAYMENTS).map(k => `
       <div class="stat"><div class="label">${PAYMENTS[k].icon}${accountName(k)}</div><div class="value">${money(sums[k])}</div></div>`).join('');
   }
@@ -917,7 +924,7 @@
     admin: ['الإدارة', () => 'ملخص اليوم وكشوف الحساب'],
     statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع'],
     remove: ['حذف حركات', () => 'اختر الحركة اللي بدك تحذفها'],
-    payout: ['سند صرف', () => 'بينخصم من رصيد الحلاق ومن صندوق المحل'],
+    payout: ['سند صرف', () => 'صرف نسبة الحلاق'],
     daily: ['كشف اليوم', () => 'كل حركات اليوم ووين راحت المبالغ']
   };
   const ADMIN_PAGES = ['admin', 'statement', 'remove', 'daily', 'payout'];
@@ -1113,10 +1120,10 @@
     document.getElementById('printHead').innerHTML =
       `<img src="logo.jpg" alt="" class="print-logo"><h2>${title}</h2><div class="print-brand" dir="ltr">97 HAIR DESIGN</div><p>${range} · تاريخ الطباعة: ${fmtDate(new Date().toISOString())}</p>`;
 
-    const isPayoutAccount = who === PAYOUT_ACCOUNT;
+    const isPayoutAccount = PAYOUT_FROM.includes(who);
     const pays = isShop && !isPayoutAccount ? [] : loadPayouts().filter(p => {
       const day = localDay(p.date);
-      return (isShop || p.barber === Number(who)) && (!from || day >= from) && (!to || day <= to);
+      return (isShop ? payoutFrom(p) === who : p.barber === Number(who)) && (!from || day >= from) && (!to || day <= to);
     });
 
     if (!list.length && !pays.length) {
@@ -1137,7 +1144,7 @@
         const totalPaid = pays.reduce((t, p) => t + p.amount, 0);
         summary = stat('عدد الحركات', list.length) + stat('المبالغ اللي نزلت', money(totalAmount)) +
           `<div class="stat paid"><div class="label">سندات الصرف للحلاقين</div><div class="value">${money(totalPaid)}</div></div>` +
-          stat('رصيد الصندوق', money(totalAmount - totalPaid), true) +
+          stat(who === 'cash' ? 'رصيد الصندوق' : 'رصيد الحساب', money(totalAmount - totalPaid), true) +
           stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
       } else {
         summary = stat('رصيد الحساب', money(totalAmount), true) + stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
@@ -1176,19 +1183,19 @@
     document.getElementById('report').innerHTML = `
       <div class="summary${isShop && !isPayoutAccount ? '' : ' six'}">${summary}</div>
       ${entriesTable}
-      ${pays.length ? '<h3 class="rep-title">سندات الصرف' + (isShop ? ' (انخصمت من الصندوق)' : '') + '</h3>' + payoutsTable(pays, isShop) : ''}`;
+      ${pays.length ? '<h3 class="rep-title">سندات الصرف' + (isShop ? ` (انخصمت من ${accountName(who)})` : '') + '</h3>' + payoutsTable(pays, isShop) : ''}`;
   }
 
   function payoutsTable(pays, withBarber) {
     const total = pays.reduce((t, p) => t + p.amount, 0);
     const rows = pays.map((p, i) => `<tr>
       <td>${i + 1}</td><td>${fmtDate(p.date)}</td>${withBarber ? `<td>${BARBERS[p.barber]}</td>` : ''}
-      <td>${p.note ? escapeHtml(p.note) : '—'}</td><td class="num">${money(p.amount)}</td>
+      <td>${accountName(payoutFrom(p))}</td><td>${p.note ? escapeHtml(p.note) : '—'}</td><td class="num">${money(p.amount)}</td>
       <td class="no-print"><button class="del" title="حذف" onclick="deletePayout(${p.id})">${TRASH}</button></td></tr>`).join('');
     return `<div class="table-wrap"><table>
-      <thead><tr><th>#</th><th>التاريخ</th>${withBarber ? '<th>الحلاق</th>' : ''}<th>ملاحظة</th><th>المبلغ</th><th class="no-print"></th></tr></thead>
+      <thead><tr><th>#</th><th>التاريخ</th>${withBarber ? '<th>الحلاق</th>' : ''}<th>من</th><th>ملاحظة</th><th>المبلغ</th><th class="no-print"></th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td colspan="${withBarber ? 4 : 3}">مجموع المصروف (${pays.length} سند)</td><td class="num">${money(total)}</td><td class="no-print"></td></tr></tfoot>
+      <tfoot><tr><td colspan="${withBarber ? 5 : 4}">مجموع المصروف (${pays.length} سند)</td><td class="num">${money(total)}</td><td class="no-print"></td></tr></tfoot>
     </table></div>`;
   }
 
@@ -1198,8 +1205,10 @@
 
   // ---------- سند صرف ----------
   let payoutBarber = null;
+  let payoutFromSel = 'cash';
   function resetPayout() {
     payoutBarber = null;
+    payoutFromSel = 'cash';
     document.getElementById('payoutAmount').value = '';
     document.getElementById('payoutNote').value = '';
     document.getElementById('payoutErr').textContent = '';
@@ -1217,13 +1226,16 @@
         ${avatar(p.barber, true)}
         <div class="info">
           <b>${BARBERS[p.barber]}</b>
-          <div class="meta"><span>${fmtDate(p.date)}</span>${p.note ? `<span>${escapeHtml(p.note)}</span>` : ''}</div>
+          <div class="meta"><span>${fmtDate(p.date)}</span><span class="pay-tag">${accountName(payoutFrom(p))}</span>${p.note ? `<span>${escapeHtml(p.note)}</span>` : ''}</div>
         </div>
         <div class="amt">${money(p.amount)}</div>
         <button class="del-btn" title="حذف" onclick="deletePayout(${p.id})">${TRASH}</button>
       </div>`).join('') : '<div class="empty">ما في سندات صرف لحد هلق</div>';
+    document.getElementById('payoutFromButtons').innerHTML = PAYOUT_FROM.map(k => `
+      <button class="pay${payoutFromSel === k ? ' sel' : ''}" onclick="pickPayoutFrom('${k}')">${PAYMENTS[k].icon}${k === 'cash' ? 'نقداً (من الصندوق)' : PAYMENTS[k].name}</button>`).join('');
     updatePayout();
   }
+  function pickPayoutFrom(k) { payoutFromSel = k; renderPayout(); }
   function pickPayoutBarber(i) {
     payoutBarber = i;
     renderPayout();
@@ -1257,11 +1269,12 @@
       id: newId(),
       date: new Date().toISOString(),
       barber: payoutBarber,
+      from: payoutFromSel,
       amount,
       note: document.getElementById('payoutNote').value.trim()
     };
     payoutsRef.doc(String(p.id)).set(p).catch(writeError);
-    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]} من ${accountName(PAYOUT_ACCOUNT)}، الباقي إله ${money(bal - amount)}`);
+    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]} من ${accountName(p.from)}، الباقي إله ${money(bal - amount)}`);
     resetPayout();
   }
   function deletePayout(id) {
@@ -1320,11 +1333,15 @@
     const stat = (label, value, gold) =>
       `<div class="stat${gold ? ' gold' : ''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
 
-    const dayPaid = dayPays.reduce((t, p) => t + p.amount, 0);
     const accRows = Object.keys(PAYMENTS).map(k => `<tr>
       <td>${accountName(k)}</td><td>${accounts[k].count}</td><td class="num">${money(accounts[k].amount)}</td></tr>`).join('') +
-      (dayPaid ? `<tr><td>سندات صرف (من ${accountName(PAYOUT_ACCOUNT)})</td><td>${dayPays.length}</td><td class="num">-${money(dayPaid)}</td></tr>
-        <tr><td><b>الباقي بـ ${accountName(PAYOUT_ACCOUNT)}</b></td><td></td><td class="num"><b>${money(accounts[PAYOUT_ACCOUNT].amount - dayPaid)}</b></td></tr>` : '');
+      PAYOUT_FROM.map(k => {
+        const ps = dayPays.filter(p => payoutFrom(p) === k);
+        if (!ps.length) return '';
+        const paid = ps.reduce((t, p) => t + p.amount, 0);
+        return `<tr><td>سندات صرف (من ${accountName(k)})</td><td>${ps.length}</td><td class="num">-${money(paid)}</td></tr>
+          <tr><td><b>الباقي بـ ${accountName(k)}</b></td><td></td><td class="num"><b>${money(accounts[k].amount - paid)}</b></td></tr>`;
+      }).join('');
     const barberRows = per.map((b, i) => b.count ? `<tr>
       <td>${BARBERS[i]}</td><td>${b.count}</td><td class="num">${money(b.amount)}</td>
       <td class="num">${money(b.barber)}</td><td class="num">${money(b.shop)}</td></tr>` : '').join('');
