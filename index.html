@@ -281,6 +281,8 @@
     background: var(--bg-2); color: var(--text); border: 2px solid var(--border);
   }
   .note-input:focus { border-color: var(--gold); }
+  .date-label { display: block; color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .date-input { margin-top: 6px; color-scheme: dark; }
   .payout-due { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
   .payout-due b { color: var(--green); direction: ltr; display: inline-block; }
   .table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
@@ -581,6 +583,8 @@
         <button class="btn dark" onclick="fillPayout()">كامل الباقي</button>
       </div>
       <input id="payoutNote" class="note-input" type="text" placeholder="ملاحظة (اختياري)" maxlength="80">
+      <label class="date-label" for="payoutDate">تاريخ السند</label>
+      <input id="payoutDate" class="note-input date-input" type="date">
       <div class="payout-due" id="payoutDue"></div>
     </div>
 
@@ -1207,6 +1211,8 @@
   let payoutBarber = null;
   let payoutFromSel = 'cash';
   function resetPayout() {
+    const dateInput = document.getElementById('payoutDate');
+    dateInput.value = dateInput.max = dayStr(new Date());
     payoutBarber = null;
     payoutFromSel = 'cash';
     document.getElementById('payoutAmount').value = '';
@@ -1264,19 +1270,31 @@
     if (payoutBarber === null) { err.textContent = 'اختر الحلاق أولاً'; return; }
     if (!(amount > 0)) { err.textContent = 'أدخل مبلغ صحيح'; return; }
     const bal = barberBalance(payoutBarber);
+    const pickedDay = document.getElementById('payoutDate').value;
+    if (pickedDay && pickedDay > dayStr(new Date())) { err.textContent = 'ما بصير تاريخ السند بالمستقبل'; return; }
     if (amount > bal && !confirm(`المبلغ ${money(amount)} أكبر من الباقي لـ ${BARBERS[payoutBarber]} (${money(bal)}). بدك تكمل؟`)) return;
     const p = {
       id: newId(),
-      date: new Date().toISOString(),
+      date: payoutDateIso(),
       barber: payoutBarber,
       from: payoutFromSel,
       amount,
       note: document.getElementById('payoutNote').value.trim()
     };
     payoutsRef.doc(String(p.id)).set(p).catch(writeError);
-    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]} من ${accountName(p.from)}، الباقي إله ${money(bal - amount)}`);
+    const onDay = localDay(p.date) === dayStr(new Date()) ? '' : ` بتاريخ ${localDay(p.date)}`;
+    toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]} من ${accountName(p.from)}${onDay}، الباقي إله ${money(bal - amount)}`);
     resetPayout();
   }
+  // تاريخ السند اللي اخترته، مع الوقت الحالي، لحتى يبين بكشف هاليوم
+  function payoutDateIso() {
+    const v = document.getElementById('payoutDate').value;
+    const now = new Date();
+    if (!v || v === dayStr(now)) return now.toISOString();
+    const [y, m, d] = v.split('-').map(Number);
+    return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+  }
+
   function deletePayout(id) {
     const p = payouts.find(x => x.id === id);
     if (!p) return;
