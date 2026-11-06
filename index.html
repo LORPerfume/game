@@ -159,6 +159,7 @@
     transition: border-color .12s, background .12s, transform .12s;
   }
   .barber:active { transform: scale(.97); }
+  .barbers .barber:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
   .barber .name { font-size: 16px; font-weight: 700; margin-top: 8px; }
   .barber.sel { border-color: var(--gold); background: rgba(214,168,91,.12); }
   .barber.sel::after {
@@ -382,6 +383,9 @@
 
   @media (max-width: 520px) {
     .barbers { grid-template-columns: repeat(2, 1fr); }
+    .barbers .barber:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .barbers .barber:last-child:nth-child(3n+1) { grid-column: auto; }
+    .barbers .barber:last-child:nth-child(odd):nth-child(3n+1) { grid-column: 1 / -1; }
     .stat .value { font-size: 18px; }
     .summary .stat .value { font-size: 16px; }
     .summary.four, .summary.six { grid-template-columns: repeat(2, 1fr); }
@@ -743,9 +747,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
   // الترتيب مهم: الحركات المحفوظة بتشير للحلاق برقم ترتيبه
-  const BARBERS = ['قصي', 'بشار', 'محمد', 'احمد', 'يوسف', 'المساعد'];
-  const INITIALS = ['ق', 'ب', 'م', 'أ', 'ي', 'مس'];
-  const COLORS = ['#5b8def', '#3ecf8e', '#e8743b', '#b06ad9', '#e05a8a', '#2bb3c0'];
+  // الحلاقين الجداد بينضافوا بآخر القائمة، لأنه الحركات المحفوظة بتشير لكل حلاق برقم ترتيبه هون
+  const BARBERS = ['قصي', 'بشار', 'محمد', 'احمد', 'يوسف', 'المساعد', 'راغب'];
+  const INITIALS = ['ق', 'ب', 'م', 'أ', 'ي', 'مس', 'ر'];
+  const COLORS = ['#5b8def', '#3ecf8e', '#e8743b', '#b06ad9', '#e05a8a', '#2bb3c0', '#d4a72c'];
+  // ترتيب العرض على الشاشة (راغب أول واحد)
+  const BARBER_ORDER = [6, 0, 1, 2, 3, 4, 5];
   const BARBER_PCT = 0.60;
   // نسبة خاصة لبعض الحلاقين (بالحساب بس، العناوين بتضل 60% / 40%). المفتاح ترتيب الحلاق
   const BARBER_RATES = { 1: 0.70 }; // بشار
@@ -1021,7 +1028,7 @@
       accountsBreakdown(list, loadPayouts().filter(p => localDay(p.date) === today));
     renderBackupNote();
 
-    const rows = per.map((p, i) => p.count ? `
+    const rows = BARBER_ORDER.map(i => [per[i], i]).map(([p, i]) => p.count ? `
       <div class="item">
         <div class="who">${avatar(i, true)}<div><b>${BARBERS[i]}</b><div class="sub" style="color:var(--muted);font-size:13px">${p.count} حركة</div></div></div>
         <div class="amt">${money(p.share)}</div>
@@ -1031,7 +1038,7 @@
 
   // ---------- استلام مبلغ ----------
   function buildBarberButtons() {
-    document.getElementById('barberButtons').innerHTML = BARBERS.map((n, i) => `
+    document.getElementById('barberButtons').innerHTML = BARBER_ORDER.map(i => [BARBERS[i], i]).map(([n, i]) => `
       <button class="barber${selectedBarber === i ? ' sel' : ''}" onclick="pickBarber(${i})">
         ${avatar(i)}<div class="name">${n}</div>
       </button>`).join('');
@@ -1104,7 +1111,7 @@
 
   // ---------- كشف الحساب ----------
   function buildTabs() {
-    const opts = Object.keys(PAYMENTS).map(k => [k, accountName(k)]).concat(BARBERS.map((n, i) => [String(i), n]));
+    const opts = Object.keys(PAYMENTS).map(k => [k, accountName(k)]).concat(BARBER_ORDER.map(i => [String(i), BARBERS[i]]));
     document.getElementById('tabs').innerHTML = opts.map(([v, n]) =>
       `<button class="tab${statementWho === v ? ' active' : ''}" onclick="pickWho('${v}')">${n}</button>`).join('');
   }
@@ -1236,7 +1243,7 @@
     renderPayout();
   }
   function renderPayout() {
-    document.getElementById('payoutBarbers').innerHTML = BARBERS.map((n, i) => {
+    document.getElementById('payoutBarbers').innerHTML = BARBER_ORDER.map(i => [BARBERS[i], i]).map(([n, i]) => {
       const bal = barberBalance(i);
       return `<button class="barber${payoutBarber === i ? ' sel' : ''}" onclick="pickPayoutBarber(${i})">
         ${avatar(i)}<div class="name">${n}</div><div class="bal${bal > 0 ? ' has' : ''}">${money(bal)}</div></button>`;
@@ -1375,7 +1382,7 @@
         return `<tr><td>سندات صرف (من ${accountName(k)})</td><td>${ps.length}</td><td class="num">-${money(paid)}</td></tr>
           <tr><td><b>الباقي بـ ${accountName(k)}</b></td><td></td><td class="num"><b>${money(accounts[k].amount - paid)}</b></td></tr>`;
       }).join('');
-    const barberRows = per.map((b, i) => b.count ? `<tr>
+    const barberRows = BARBER_ORDER.map(i => [per[i], i]).map(([b, i]) => b.count ? `<tr>
       <td>${BARBERS[i]}</td><td>${b.count}</td><td class="num">${money(b.amount)}</td>
       <td class="num">${money(b.barber)}</td><td class="num">${money(b.shop)}</td></tr>` : '').join('');
     const moveRows = list.map((e, i) => `<tr>
