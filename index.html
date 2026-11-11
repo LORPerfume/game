@@ -691,6 +691,7 @@
 
   <!-- القوائم -->
   <section id="lists" class="hidden">
+    <div class="tabs no-print" id="lstTabs"></div>
     <div class="card no-print">
       <div class="dates">
         <div><label for="lstFrom">من تاريخ</label><input id="lstFrom" type="date" onchange="renderLists()"></div>
@@ -1464,25 +1465,36 @@
     if (!f.value && !t.value) [f.value, t.value] = rangeOf('month');
     go('lists');
   }
+  // مع حساب الحلاقين: كل المستلم ناقص المعطى للحلاقين ناقص المصاريف
+  // بدون حساب الحلاقين: نسبة المحل بس ناقص المصاريف
+  const LIST_MODES = { full: 'مع حساب الحلاقين', shop: 'بدون حساب الحلاقين' };
+  let listMode = 'full';
+  function pickListMode(m) { listMode = m; renderLists(); }
   function renderLists() {
+    const shopOnly = listMode === 'shop';
+    document.getElementById('lstTabs').innerHTML = Object.keys(LIST_MODES).map(m =>
+      `<button class="tab${listMode === m ? ' active' : ''}" onclick="pickListMode('${m}')">${LIST_MODES[m]}</button>`).join('');
     const from = document.getElementById('lstFrom').value;
     const to = document.getElementById('lstTo').value;
-    document.getElementById('lstHead').innerHTML = printHead('قائمة الإيراد', from, to);
+    document.getElementById('lstHead').innerHTML = printHead('قائمة الإيراد (' + LIST_MODES[listMode] + ')', from, to);
     const list = load().filter(e => inRange(e.date, from, to));
-    const pays = loadPayouts().filter(p => inRange(p.date, from, to));
+    const pays = shopOnly ? [] : loadPayouts().filter(p => inRange(p.date, from, to));
     const exps = loadExpenses().filter(x => inRange(x.date, from, to));
     const report = document.getElementById('lstReport');
     if (!list.length && !pays.length && !exps.length) {
       report.innerHTML = '<div class="empty">لا توجد حركات في هذه الفترة</div>'; return;
     }
     const sum = (arr, f = () => true) => arr.reduce((t, v) => f(v) ? t + v.amount : t, 0);
-    const received = sum(list), paid = sum(pays), spent = sum(exps);
+    // بدون حساب الحلاقين: المستلم = نسبة المحل من كل حركة
+    const recOf = e => shopOnly ? e.shopShare : e.amount;
+    const sumRec = (f = () => true) => list.reduce((t, e) => f(e) ? t + recOf(e) : t, 0);
+    const received = sumRec(), paid = sum(pays), spent = sum(exps);
     const net = received - paid - spent;
     const stat = (label, value, cls) => `<div class="stat${cls ? ' ' + cls : ''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
     const neg = v => v ? '-' + money(v) : money(0);
 
     const recRows = Object.keys(PAYMENTS).map(k => {
-      const v = sum(list, e => payOf(e) === k);
+      const v = sumRec(e => payOf(e) === k);
       return v ? `<tr class="sub"><td>${accountName(k)}</td><td class="num">${money(v)}</td></tr>` : '';
     }).join('');
     const payRows = BARBER_ORDER.map(i => {
@@ -1496,12 +1508,13 @@
 
     const entryRows = list.map((e, i) => `<tr>
       <td>${i + 1}</td><td>${fmtDate(e.date)}</td><td>${BARBERS[e.barber]}</td><td>${accountName(payOf(e))}</td>
-      <td class="num">${money(e.amount)}</td></tr>`).join('');
+      <td class="num">${money(e.amount)}</td>${shopOnly ? `<td class="num">${money(e.shopShare)}</td>` : ''}</tr>`).join('');
+    const recLabel = shopOnly ? 'نسبة المحل (40%)' : 'المبالغ المستلمة';
 
     report.innerHTML = `
-      <div class="summary four">
-        ${stat('المبالغ المستلمة', money(received))}
-        ${stat('المعطى للحلاقين', money(paid), 'paid')}
+      <div class="summary${shopOnly ? '' : ' four'}">
+        ${stat(recLabel, money(received))}
+        ${shopOnly ? '' : stat('المعطى للحلاقين', money(paid), 'paid')}
         ${stat('المصاريف', money(spent), 'paid')}
         ${stat('صافي الإيراد', money(net), 'gold net' + (net < 0 ? ' neg' : ''))}
       </div>
@@ -1510,10 +1523,10 @@
       <div class="table-wrap"><table>
         <thead><tr><th style="text-align:right">البند</th><th>المبلغ</th></tr></thead>
         <tbody>
-          <tr class="main"><td>المبالغ المستلمة (${list.length} حركة)</td><td class="num">${money(received)}</td></tr>
+          <tr class="main"><td>${recLabel} (${list.length} حركة)</td><td class="num">${money(received)}</td></tr>
           ${recRows}
-          <tr class="main"><td>ناقص: المبالغ المعطاة للحلاقين (${pays.length} سند)</td><td class="num neg">${neg(paid)}</td></tr>
-          ${payRows}
+          ${shopOnly ? '' : `<tr class="main"><td>ناقص: المبالغ المعطاة للحلاقين (${pays.length} سند)</td><td class="num neg">${neg(paid)}</td></tr>
+          ${payRows}`}
           <tr class="main"><td>ناقص: المصاريف (${exps.length})</td><td class="num neg">${neg(spent)}</td></tr>
           ${expRows}
           <tr class="total"><td>صافي الإيراد</td><td class="num">${money(net)}</td></tr>
@@ -1522,9 +1535,9 @@
 
       ${list.length ? `<h3 class="rep-title">تفاصيل المبالغ المستلمة</h3>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>التاريخ</th><th>الحلاق</th><th>الحساب</th><th>المبلغ</th></tr></thead>
+        <thead><tr><th>#</th><th>التاريخ</th><th>الحلاق</th><th>الحساب</th><th>المبلغ</th>${shopOnly ? '<th>للمحل (40%)</th>' : ''}</tr></thead>
         <tbody>${entryRows}</tbody>
-        <tfoot><tr><td colspan="4">مجموع المستلم (${list.length} حركة)</td><td class="num">${money(received)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="4">مجموع المستلم (${list.length} حركة)</td><td class="num">${money(sum(list))}</td>${shopOnly ? `<td class="num">${money(received)}</td>` : ''}</tr></tfoot>
       </table></div>` : ''}
       ${pays.length ? '<h3 class="rep-title">تفاصيل المبالغ المعطاة للحلاقين</h3>' + payoutsTable(pays, true) : ''}
       ${exps.length ? '<h3 class="rep-title">تفاصيل المصاريف</h3>' + expensesTable(exps, true) : ''}`;
