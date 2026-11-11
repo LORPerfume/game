@@ -839,7 +839,7 @@
 <div class="modal hidden" id="loginModal" onclick="if (event.target === this) closeLogin()">
   <div class="modal-card" id="loginCard">
     <img class="logo" src="logo.jpg" alt="">
-    <h3>الإدارة</h3>
+    <h3 id="loginTitle">الإدارة</h3>
     <p>أدخل كلمة السر</p>
     <input id="pass" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if (event.key === 'Enter') tryLogin()">
     <div class="err" id="passErr" style="margin-top:0"></div>
@@ -1089,11 +1089,15 @@
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
+  // القوائم إلها كلمة سر خاصة فيها، بتنطلب كل مرة بتفتحها
+  const LISTS_PASSWORD_HASH = '15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225';
   let adminUnlocked = false;
+  let listsUnlocked = false;
   let pendingPage = null;
 
   function openLogin(page) {
     pendingPage = page;
+    document.getElementById('loginTitle').textContent = page === 'lists' && adminUnlocked ? 'القوائم' : 'الإدارة';
     document.getElementById('pass').value = '';
     document.getElementById('passErr').textContent = '';
     document.getElementById('loginModal').classList.remove('hidden');
@@ -1105,8 +1109,9 @@
   }
   async function tryLogin() {
     const input = document.getElementById('pass');
-    if (await sha256(input.value) === ADMIN_PASSWORD_HASH) {
-      adminUnlocked = true;
+    const forLists = pendingPage === 'lists' && adminUnlocked;
+    if (await sha256(input.value) === (forLists ? LISTS_PASSWORD_HASH : ADMIN_PASSWORD_HASH)) {
+      if (forLists) listsUnlocked = true; else adminUnlocked = true;
       const page = pendingPage;
       closeLogin();
       go(page);
@@ -1120,6 +1125,9 @@
 
   function go(page) {
     if (ADMIN_PAGES.includes(page) && !adminUnlocked) { openLogin(page); return; }
+    if (page === 'lists' && !listsUnlocked) { openLogin(page); return; }
+    // الطلوع من القوائم بيقفلها
+    if (page !== 'lists') listsUnlocked = false;
     // الخروج من الإدارة بيقفلها، والدخول مرة تانية بيطلب كلمة السر
     if (!ADMIN_PAGES.includes(page)) adminUnlocked = false;
     Object.keys(PAGES).forEach(id => document.getElementById(id).classList.toggle('hidden', id !== page));
