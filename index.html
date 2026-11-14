@@ -1057,7 +1057,13 @@
   }
   function pad(n) { return String(n).padStart(2, '0'); }
   function dayStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
-  function localDay(iso) { return dayStr(new Date(iso)); }
+  // يوم الشغل بيبدا الساعة 3 الفجر مش 12 بالليل:
+  // أي حركة قبل الساعة 3 الفجر بتنحسب على اليوم اللي قبله
+  const DAY_START_HOUR = 3;
+  function bizDate(d) { return new Date(new Date(d).getTime() - DAY_START_HOUR * 3600e3); }
+  function bizNow() { return bizDate(Date.now()); }
+  function today() { return dayStr(bizNow()); }
+  function localDay(iso) { return dayStr(bizDate(iso)); }
   function fmtDate(iso) {
     const d = new Date(iso);
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
@@ -1072,7 +1078,7 @@
   }
 
   const PAGES = {
-    home: ['97 Hair Design', () => new Date().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })],
+    home: ['97 Hair Design', () => bizNow().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })],
     receive: ['استلام مبلغ', () => 'اختر الحلاق واكتب المبلغ'],
     admin: ['الإدارة', () => 'ملخص اليوم وكشوف الحساب'],
     statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع'],
@@ -1152,8 +1158,8 @@
 
   // ---------- الرئيسية ----------
   function renderAdmin() {
-    const today = dayStr(new Date());
-    const list = load().filter(e => localDay(e.date) === today);
+    const day = today();
+    const list = load().filter(e => localDay(e.date) === day);
     let total = 0, shop = 0;
     const per = BARBERS.map(() => ({ share: 0, count: 0 }));
     list.forEach(e => {
@@ -1164,8 +1170,8 @@
     document.getElementById('tShop').textContent = money(shop);
     document.getElementById('tCount').textContent = list.length;
     document.getElementById('tPays').innerHTML =
-      accountsBreakdown(list, loadPayouts().filter(p => localDay(p.date) === today),
-        loadExpenses().filter(x => localDay(x.date) === today));
+      accountsBreakdown(list, loadPayouts().filter(p => localDay(p.date) === day),
+        loadExpenses().filter(x => localDay(x.date) === day));
     renderBackupNote();
 
     const rows = BARBER_ORDER.map(i => [per[i], i]).map(([p, i]) => p.count ? `
@@ -1258,7 +1264,7 @@
   function pickWho(v) { statementWho = v; renderStatement(); }
 
   function rangeOf(kind) {
-    const now = new Date();
+    const now = bizNow();
     let from = '', to = '';
     if (kind === 'today') { from = to = dayStr(now); }
     if (kind === 'week') { const d = new Date(now); d.setDate(d.getDate() - 6); from = dayStr(d); to = dayStr(now); }
@@ -1400,7 +1406,7 @@
   let expFromSel = 'cash';
   function resetExpense() {
     const dateInput = document.getElementById('expDate');
-    dateInput.value = dateInput.max = dayStr(new Date());
+    dateInput.value = dateInput.max = today();
     expFromSel = 'cash';
     document.getElementById('expDesc').value = '';
     document.getElementById('expAmount').value = '';
@@ -1431,14 +1437,14 @@
     if (!desc) { err.textContent = 'اكتب شو المصروف'; return; }
     if (!(amount > 0)) { err.textContent = 'أدخل مبلغ صحيح'; return; }
     const pickedDay = document.getElementById('expDate').value;
-    if (pickedDay && pickedDay > dayStr(new Date())) { err.textContent = 'ما بصير تاريخ المصروف بالمستقبل'; return; }
+    if (pickedDay && pickedDay > today()) { err.textContent = 'ما بصير تاريخ المصروف بالمستقبل'; return; }
     const x = { id: newId(), date: dateInputIso('expDate'), desc, from: expFromSel, amount };
     expensesRef.doc(String(x.id)).set(x).catch(writeError);
-    const onDay = localDay(x.date) === dayStr(new Date()) ? '' : ` بتاريخ ${localDay(x.date)}`;
+    const onDay = localDay(x.date) === today() ? '' : ` بتاريخ ${localDay(x.date)}`;
     toast(`✓ انحفظ مصروف ${desc} بـ ${money(amount)} من ${accountName(x.from)}${onDay}`);
     document.getElementById('expDesc').value = '';
     document.getElementById('expAmount').value = '';
-    document.getElementById('expDate').value = dayStr(new Date());
+    document.getElementById('expDate').value = today();
     updateExpense();
     renderExpenses();
   }
@@ -1560,7 +1566,7 @@
   let payoutFromSel = 'cash';
   function resetPayout() {
     const dateInput = document.getElementById('payoutDate');
-    dateInput.value = dateInput.max = dayStr(new Date());
+    dateInput.value = dateInput.max = today();
     payoutBarber = null;
     payoutFromSel = 'cash';
     document.getElementById('payoutAmount').value = '';
@@ -1619,7 +1625,7 @@
     if (!(amount > 0)) { err.textContent = 'أدخل مبلغ صحيح'; return; }
     const bal = barberBalance(payoutBarber);
     const pickedDay = document.getElementById('payoutDate').value;
-    if (pickedDay && pickedDay > dayStr(new Date())) { err.textContent = 'ما بصير تاريخ السند بالمستقبل'; return; }
+    if (pickedDay && pickedDay > today()) { err.textContent = 'ما بصير تاريخ السند بالمستقبل'; return; }
     if (amount > bal && !confirm(`المبلغ ${money(amount)} أكبر من الباقي لـ ${BARBERS[payoutBarber]} (${money(bal)}). بدك تكمل؟`)) return;
     const p = {
       id: newId(),
@@ -1630,7 +1636,7 @@
       note: document.getElementById('payoutNote').value.trim()
     };
     payoutsRef.doc(String(p.id)).set(p).catch(writeError);
-    const onDay = localDay(p.date) === dayStr(new Date()) ? '' : ` بتاريخ ${localDay(p.date)}`;
+    const onDay = localDay(p.date) === today() ? '' : ` بتاريخ ${localDay(p.date)}`;
     toast(`✓ انصرف ${money(p.amount)} لـ ${BARBERS[p.barber]} من ${accountName(p.from)}${onDay}، الباقي إله ${money(bal - amount)}`);
     resetPayout();
   }
@@ -1639,9 +1645,10 @@
   function dateInputIso(inputId) {
     const v = document.getElementById(inputId).value;
     const now = new Date();
-    if (!v || v === dayStr(now)) return now.toISOString();
+    if (!v || v === today()) return now.toISOString();
     const [y, m, d] = v.split('-').map(Number);
-    return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+    // يوم ماضي: نص النهار، لحتى ينحسب أكيد على هاليوم (اليوم بيبدا الساعة 3 الفجر)
+    return new Date(y, m - 1, d, 12, now.getMinutes(), now.getSeconds()).toISOString();
   }
 
   function deletePayout(id) {
@@ -1662,11 +1669,11 @@
 
   // ---------- كشف اليوم ----------
   function openDaily() {
-    document.getElementById('dayPick').value = dayStr(new Date());
+    document.getElementById('dayPick').value = today();
     go('daily');
   }
   function setDay(offset) {
-    const d = new Date(); d.setDate(d.getDate() + offset);
+    const d = bizNow(); d.setDate(d.getDate() + offset);
     document.getElementById('dayPick').value = dayStr(d);
     renderDaily();
   }
@@ -1674,7 +1681,7 @@
 
   function renderDaily() {
     const pick = document.getElementById('dayPick');
-    if (!pick.value) pick.value = dayStr(new Date());
+    if (!pick.value) pick.value = today();
     const day = pick.value;
     const [y, m, d] = day.split('-');
     const nice = new Date(+y, +m - 1, +d).toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -1793,7 +1800,7 @@
         img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
       const canvas = await html2canvas(sheet, { scale: 2, backgroundColor: '#ffffff' });
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      const name = `97-hair-design-statement-${dayStr(new Date())}.png`;
+      const name = `97-hair-design-statement-${today()}.png`;
       const file = new File([blob], name, { type: 'image/png' });
       let shared = false;
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1837,7 +1844,7 @@
   async function exportBackup() {
     const list = load();
     const data = JSON.stringify({ app: '97-hair-design', version: 2, exportedAt: new Date().toISOString(), entries: list, payouts: loadPayouts(), expenses: loadExpenses() }, null, 1);
-    const name = `97-hair-design-backup-${dayStr(new Date())}.json`;
+    const name = `97-hair-design-backup-${today()}.json`;
     const file = new File([data], name, { type: 'application/json' });
 
     // على الموبايل: نافذة المشاركة (واتساب، ملفات...)، وغير هيك تنزيل مباشر
@@ -1945,7 +1952,7 @@
   function renderPurge() {
     const input = document.getElementById('purgeDate');
     if (!input.value) {
-      const now = new Date();
+      const now = bizNow();
       input.value = dayStr(new Date(now.getFullYear(), now.getMonth(), 1));
     }
     const { day, ents, pays, exps } = purgeTargets();
@@ -1983,7 +1990,7 @@
     renderPurge();
     document.getElementById('removeChips').innerHTML = Object.keys(REMOVE_RANGES).map(k =>
       `<button class="${removeRange === k ? 'on' : ''}" onclick="pickRemoveRange('${k}')">${REMOVE_RANGES[k]}</button>`).join('');
-    const now = new Date();
+    const now = bizNow();
     const today = dayStr(now);
     const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 6);
     const from = removeRange === 'today' ? today : removeRange === 'week' ? dayStr(weekAgo) : '';
