@@ -532,7 +532,7 @@
 
     <button class="action ghost" onclick="go('payout')">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span>
-      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق نقداً أو كليك، وبينخصم من رصيده ومن الحساب</span></span>
+      <span><span class="t">سند صرف</span><span class="d">صرف نسبة الحلاق نقداً أو كليك أو فيزا، وبينخصم من رصيده ومن الحساب</span></span>
     </button>
 
     <button class="action ghost" onclick="go('expense')">
@@ -626,7 +626,7 @@
 
     <div class="card">
       <h3 class="section-title">٣. طريقة الصرف</h3>
-      <div class="pays two" id="payoutFromButtons"></div>
+      <div class="pays" id="payoutFromButtons"></div>
     </div>
 
     <button class="btn gold" id="payoutBtn" onclick="savePayout()">
@@ -835,6 +835,9 @@
       <div id="report"></div>
     </div>
 
+    <!-- تسكير حساب الحلاق: سند صرف بالباقي إله عن الفترة المختارة -->
+    <div class="card no-print hidden" id="settleCard"></div>
+
     <div class="stmt-actions no-print">
       <button class="btn gold" id="shareStmtBtn" onclick="shareStatement()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
@@ -922,8 +925,8 @@
   function payName(e) { return PAYMENTS[payOf(e)].name; }
   function accountName(k) { return PAYMENTS[k].account; }
   // المبلغ كامل بينزل بالحساب حسب طريقة الدفع
-  // سند الصرف بينصرف نقداً (من صندوق المحل) أو كليك، وبينخصم من الحساب اللي انصرف منه
-  const PAYOUT_FROM = ['cash', 'cliq'];
+  // سند الصرف بينصرف نقداً (من صندوق المحل) أو كليك أو فيزا، وبينخصم من الحساب اللي انصرف منه
+  const PAYOUT_FROM = ['cash', 'cliq', 'visa'];
   function payoutFrom(p) { return PAYOUT_FROM.includes(p.from) ? p.from : 'cash'; }
   // المصروف بينصرف من أي حساب (صندوق المحل / كليك / فيزا) وبينخصم منه
   function expenseFrom(x) { return PAYMENTS[x.from] ? x.from : 'cash'; }
@@ -1427,6 +1430,8 @@
     const exps = !isShop ? [] : loadExpenses().filter(x => expenseFrom(x) === who && inRange(x.date, from, to));
     const sls = !isShop ? [] : loadSales().filter(s => payOf(s) === who && inRange(s.date, from, to));
 
+    renderSettle(isShop ? null : Number(who), from, to,
+      list.reduce((t, e) => t + e.barberShare, 0) - pays.reduce((t, p) => t + p.amount, 0));
     if (!list.length && !pays.length && !exps.length && !sls.length) {
       document.getElementById('report').innerHTML = `<div class="empty">لا توجد حركات في هذه الفترة</div>`;
       return;
@@ -1488,6 +1493,58 @@
       ${sls.length ? `<h3 class="rep-title">المبيعات (نزلت بـ ${accountName(who)})</h3>` + salesTable(sls, false) : ''}
       ${pays.length ? '<h3 class="rep-title">سندات الصرف' + (isShop ? ` (انخصمت من ${accountName(who)})` : '') + '</h3>' + payoutsTable(pays, isShop) : ''}
       ${exps.length ? `<h3 class="rep-title">المصاريف (انخصمت من ${accountName(who)})</h3>` + expensesTable(exps, false) : ''}`;
+  }
+
+  // ---------- تسكير حساب الحلاق ----------
+  let settlePay = 'cash';
+  function renderSettle(barber, from, to, due) {
+    const card = document.getElementById('settleCard');
+    if (barber === null) { card.classList.add('hidden'); card.dataset.key = ''; return; }
+    card.classList.remove('hidden');
+    due = round2(due);
+    const key = [barber, from, to, due].join('|');
+    // ما منرجع نبني الخانة إذا ما تغير شي، لحتى ما يروح المبلغ اللي انكتب
+    if (card.dataset.key === key) { buildSettlePay(); return; }
+    card.dataset.key = key;
+    const name = BARBERS[barber];
+    if (due <= 0) {
+      card.innerHTML = `<h3 class="section-title">تسكير حساب ${name}</h3>
+        <div class="empty">✓ الحساب مسكّر بهالفترة، ما في إله شي${due < 0 ? ` (انصرفله ${money(-due)} زيادة)` : ''}</div>`;
+      return;
+    }
+    card.innerHTML = `
+      <h3 class="section-title">تسكير حساب ${name}</h3>
+      <div class="payout-due" style="margin:0 0 12px">الباقي إله بهالفترة: <b>${money(due)}</b> · الباقي الكلي: <b>${money(barberBalance(barber))}</b></div>
+      <div class="amount-box">
+        <input id="settleAmount" type="number" min="0" step="0.01" inputmode="decimal" value="${due}">
+      </div>
+      <h3 class="section-title" style="margin-top:14px">طريقة الصرف</h3>
+      <div class="pays" id="settlePayButtons"></div>
+      <button class="btn gold" style="margin-top:14px" onclick="saveSettle()">تسكير الحساب</button>
+      <div class="err" id="settleErr"></div>`;
+    buildSettlePay();
+  }
+  function buildSettlePay() {
+    const box = document.getElementById('settlePayButtons');
+    if (!box) return;
+    box.innerHTML = PAYOUT_FROM.map(k => `
+      <button class="pay${settlePay === k ? ' sel' : ''}" onclick="pickSettlePay('${k}')">${PAYMENTS[k].icon}${PAYMENTS[k].name}</button>`).join('');
+  }
+  function pickSettlePay(k) { settlePay = k; buildSettlePay(); }
+  function saveSettle() {
+    const barber = Number(statementWho);
+    const from = document.getElementById('from').value;
+    const to = document.getElementById('to').value;
+    const err = document.getElementById('settleErr');
+    const amount = round2(parseFloat(document.getElementById('settleAmount').value));
+    if (!(amount > 0)) { err.textContent = 'أدخل مبلغ صحيح'; return; }
+    // السند بينسجل على آخر يوم بالفترة، لحتى يبين بكشف هاليوم وبالقوائم
+    const day = to && to < today() ? to : today();
+    const period = from || to ? `${from || 'البداية'} إلى ${to || 'اليوم'}` : 'كل الفترة';
+    if (!confirm(`تسكير حساب ${BARBERS[barber]} (${period}): صرف ${money(amount)} ${PAYMENTS[settlePay].name}؟`)) return;
+    const p = { id: newId(), date: dayIso(day), barber, from: settlePay, amount, note: `تسكير حساب ${period}` };
+    payoutsRef.doc(String(p.id)).set(p).catch(writeError);
+    toast(`✓ تسكّر حساب ${BARBERS[barber]}: انصرف ${money(amount)} من ${accountName(p.from)}`);
   }
 
   function payoutsTable(pays, withBarber) {
@@ -1768,8 +1825,8 @@
   }
   // تاريخ السند اللي اخترته، مع الوقت الحالي، لحتى يبين بكشف هاليوم
   function payoutDateIso() { return dateInputIso('payoutDate'); }
-  function dateInputIso(inputId) {
-    const v = document.getElementById(inputId).value;
+  function dateInputIso(inputId) { return dayIso(document.getElementById(inputId).value); }
+  function dayIso(v) {
     const now = new Date();
     if (!v || v === today()) return now.toISOString();
     const [y, m, d] = v.split('-').map(Number);
