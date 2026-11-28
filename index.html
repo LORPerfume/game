@@ -138,6 +138,12 @@
   .receive-btn .ic svg { width: 30px; height: 30px; }
   .receive-btn .t { font-size: 24px; font-weight: 800; letter-spacing: .5px; }
   @media (prefers-reduced-motion: reduce) { .receive-btn::after { animation: none; } }
+  /* زر المبيعات: نفس شكل زر استلام مبلغ بس أصغر */
+  .receive-btn.sale-btn { width: min(150px, 42vw); margin-top: 16px; gap: 6px; }
+  .receive-btn.sale-btn .ic { width: 44px; height: 44px; box-shadow: 0 4px 12px rgba(36,26,8,.35), 0 0 0 4px rgba(36,26,8,.12); }
+  .receive-btn.sale-btn .ic svg { width: 22px; height: 22px; }
+  .receive-btn.sale-btn .t { font-size: 19px; }
+  .summary.six .stat:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
   .admin-link {
     display: flex; align-items: center; justify-content: center; gap: 8px; margin: 26px auto 0;
     background: transparent; border: 1px solid var(--border); color: var(--muted);
@@ -490,6 +496,11 @@
       <span class="t">استلام مبلغ</span>
     </button>
 
+    <button class="receive-btn sale-btn" onclick="go('sale')">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+      <span class="t">المبيعات</span>
+    </button>
+
     <div class="amanah home-amanah">
       <div class="ayah">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَنْ تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</div>
       <div class="ref">سورة النساء، الآية 58</div>
@@ -733,7 +744,7 @@
 
     <div class="card purge">
       <h3 class="section-title">حذف كل شي قبل تاريخ</h3>
-      <label class="date-label" for="purgeDate" style="margin-top:0">احذف الحركات وسندات الصرف والمصاريف اللي قبل:</label>
+      <label class="date-label" for="purgeDate" style="margin-top:0">احذف الحركات وسندات الصرف والمصاريف والمبيعات اللي قبل:</label>
       <input id="purgeDate" class="note-input date-input" type="date" onchange="renderPurge()">
       <div class="payout-due" id="purgeInfo"></div>
       <button class="btn purge-btn" id="purgeBtn" onclick="purgeBefore()" disabled>حذف</button>
@@ -773,6 +784,33 @@
       حفظ المبلغ
     </button>
     <div class="err" id="err"></div>
+  </section>
+
+  <!-- صفحة المبيعات: بيع منتج، المبلغ كامل للمحل وبينزل بالحساب حسب طريقة الدفع -->
+  <section id="sale" class="hidden">
+    <div class="card">
+      <h3 class="section-title">١. الصنف</h3>
+      <input id="saleItem" class="note-input" style="margin-top:0" type="text" placeholder="مثلاً: شامبو، جل، كريم، واكس..." maxlength="80" oninput="updateSale()">
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">٢. السعر</h3>
+      <div class="amount-box">
+        <input id="saleAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" oninput="updateSale()">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">٣. طريقة الدفع</h3>
+      <div class="pays" id="salePayButtons"></div>
+      <div class="into" id="saleInto"></div>
+    </div>
+
+    <button class="btn gold" id="saleBtn" onclick="saveSale()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      حفظ البيع
+    </button>
+    <div class="err" id="saleErr"></div>
   </section>
 
   <!-- صفحة كشف الحساب -->
@@ -889,10 +927,11 @@
   function payoutFrom(p) { return PAYOUT_FROM.includes(p.from) ? p.from : 'cash'; }
   // المصروف بينصرف من أي حساب (صندوق المحل / كليك / فيزا) وبينخصم منه
   function expenseFrom(x) { return PAYMENTS[x.from] ? x.from : 'cash'; }
-  function accountsBreakdown(list, pays = [], exps = []) {
+  function accountsBreakdown(list, pays = [], exps = [], sls = []) {
     const sums = {};
     Object.keys(PAYMENTS).forEach(k => sums[k] = 0);
     list.forEach(e => { sums[payOf(e)] += e.amount; });
+    sls.forEach(s => { sums[payOf(s)] += s.amount; });
     pays.forEach(p => { sums[payoutFrom(p)] -= p.amount; });
     exps.forEach(x => { sums[expenseFrom(x)] -= x.amount; });
     return Object.keys(PAYMENTS).map(k => `
@@ -921,20 +960,25 @@
   const payoutsRef = db.collection('payouts');
   // مصاريف المحل
   const expensesRef = db.collection('expenses');
+  // المبيعات (بيع منتجات): المبلغ كامل للمحل
+  const salesRef = db.collection('sales');
   const MIGRATED_KEY = 'salon_migrated_v1';
 
   let entries = [];
   let payouts = [];
   let expenses = [];
+  let sales = [];
   let unsubscribe = null;
   let unsubscribePayouts = null;
   let unsubscribeExpenses = null;
+  let unsubscribeSales = null;
   let currentPage = 'home';
 
   // كل الحركات، مرتبة من الأقدم للأحدث
   function load() { return entries.slice(); }
   function loadPayouts() { return payouts.slice(); }
   function loadExpenses() { return expenses.slice(); }
+  function loadSales() { return sales.slice(); }
   function inRange(iso, from, to) { const day = localDay(iso); return (!from || day >= from) && (!to || day <= to); }
 
   // الباقي للحلاق = مجموع نسبته (60%) ناقص سندات الصرف، من البداية
@@ -1008,6 +1052,10 @@
       expenses = snap.docs.map(d => d.data()).sort((a, b) => a.date.localeCompare(b.date));
       rerender();
     }, () => {});
+    unsubscribeSales = salesRef.onSnapshot(snap => {
+      sales = snap.docs.map(d => d.data()).sort((a, b) => a.date.localeCompare(b.date));
+      rerender();
+    }, () => {});
   }
 
   auth.onAuthStateChanged(user => {
@@ -1019,9 +1067,11 @@
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
       if (unsubscribePayouts) { unsubscribePayouts(); unsubscribePayouts = null; }
       if (unsubscribeExpenses) { unsubscribeExpenses(); unsubscribeExpenses = null; }
+      if (unsubscribeSales) { unsubscribeSales(); unsubscribeSales = null; }
       entries = [];
       payouts = [];
       expenses = [];
+      sales = [];
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('authForm').classList.remove('hidden');
     }
@@ -1081,6 +1131,7 @@
   const PAGES = {
     home: ['97 Hair Design', () => bizNow().toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })],
     receive: ['استلام مبلغ', () => 'اختر الحلاق واكتب المبلغ'],
+    sale: ['المبيعات', () => 'اكتب الصنف والسعر وطريقة الدفع'],
     admin: ['الإدارة', () => 'ملخص اليوم وكشوف الحساب'],
     statement: ['كشف حساب', () => 'اختر الحساب والفترة ثم اطبع'],
     remove: ['حذف حركات', () => 'اختر الحركة اللي بدك تحذفها'],
@@ -1149,6 +1200,7 @@
     currentPage = page;
     if (page === 'admin') renderAdmin();
     if (page === 'receive') resetReceive();
+    if (page === 'sale') resetSale();
     if (page === 'statement') renderStatement();
     if (page === 'remove') renderRemove();
     if (page === 'daily') renderDaily();
@@ -1167,12 +1219,15 @@
       total += e.amount; shop += e.shopShare;
       per[e.barber].share += e.barberShare; per[e.barber].count++;
     });
+    // المبيعات بتنحسب كاملة بالدخل وبربح المحل
+    const daySales = loadSales().filter(s => localDay(s.date) === day);
+    daySales.forEach(s => { total += s.amount; shop += s.amount; });
     document.getElementById('tTotal').textContent = money(total);
     document.getElementById('tShop').textContent = money(shop);
-    document.getElementById('tCount').textContent = list.length;
+    document.getElementById('tCount').textContent = list.length + daySales.length;
     document.getElementById('tPays').innerHTML =
       accountsBreakdown(list, loadPayouts().filter(p => localDay(p.date) === day),
-        loadExpenses().filter(x => localDay(x.date) === day));
+        loadExpenses().filter(x => localDay(x.date) === day), daySales);
     renderBackupNote();
 
     const rows = BARBER_ORDER.map(i => [per[i], i]).map(([p, i]) => p.count ? `
@@ -1256,6 +1311,60 @@
     resetReceive();
   }
 
+  // ---------- المبيعات ----------
+  let salePay = DEFAULT_PAY;
+  function resetSale() {
+    salePay = DEFAULT_PAY;
+    document.getElementById('saleItem').value = '';
+    document.getElementById('saleAmount').value = '';
+    document.getElementById('saleErr').textContent = '';
+    buildSalePay();
+  }
+  function buildSalePay() {
+    document.getElementById('salePayButtons').innerHTML = Object.keys(PAYMENTS).map(k => `
+      <button class="pay${salePay === k ? ' sel' : ''}" onclick="pickSalePay('${k}')">${PAYMENTS[k].icon}${PAYMENTS[k].name}</button>`).join('');
+    updateSale();
+  }
+  function pickSalePay(k) { salePay = k; buildSalePay(); }
+  function updateSale() {
+    const amount = parseFloat(document.getElementById('saleAmount').value) || 0;
+    const item = document.getElementById('saleItem').value.trim();
+    document.getElementById('saleInto').innerHTML =
+      `${PAYMENTS[salePay].icon}<span>ينزل كامل بـ <b>${accountName(salePay)}</b></span><b class="num">${money(amount)}</b>`;
+    document.getElementById('saleBtn').disabled = !item || !(amount > 0);
+    document.getElementById('saleErr').textContent = '';
+  }
+  function saveSale() {
+    const err = document.getElementById('saleErr');
+    const item = document.getElementById('saleItem').value.trim();
+    const amount = round2(parseFloat(document.getElementById('saleAmount').value));
+    if (!item) { err.textContent = 'اكتب الصنف'; return; }
+    if (!(amount > 0)) { err.textContent = 'أدخل سعر صحيح'; return; }
+    const sale = { id: newId(), date: new Date().toISOString(), item, amount, pay: salePay };
+    salesRef.doc(String(sale.id)).set(sale).catch(writeError);
+    toast(`✓ انباع ${item} بـ ${money(amount)}، نزل بـ ${accountName(sale.pay)}`);
+    resetSale();
+  }
+  function deleteSale(id) {
+    const s = sales.find(v => v.id === id);
+    if (!s) return;
+    if (!confirm(`حذف بيع "${s.item}" بمبلغ ${money(s.amount)} (${payName(s)}) بتاريخ ${fmtDate(s.date)}؟`)) return;
+    salesRef.doc(String(id)).delete().catch(writeError);
+    toast('تم حذف البيع');
+  }
+  function salesTable(sls, withPay) {
+    const total = sls.reduce((t, s) => t + s.amount, 0);
+    const rows = sls.map((s, i) => `<tr>
+      <td>${i + 1}</td><td>${fmtDate(s.date)}</td><td>${escapeHtml(s.item || '—')}</td>${withPay ? `<td>${accountName(payOf(s))}</td>` : ''}
+      <td class="num">${money(s.amount)}</td>
+      <td class="no-print"><button class="del" title="حذف" onclick="deleteSale(${s.id})">${TRASH}</button></td></tr>`).join('');
+    return `<div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>التاريخ</th><th>الصنف</th>${withPay ? '<th>الحساب</th>' : ''}<th>المبلغ</th><th class="no-print"></th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="${withPay ? 4 : 3}">مجموع المبيعات (${sls.length})</td><td class="num">${money(total)}</td><td class="no-print"></td></tr></tfoot>
+    </table></div>`;
+  }
+
   // ---------- كشف الحساب ----------
   function buildTabs() {
     const opts = Object.keys(PAYMENTS).map(k => [k, accountName(k)]).concat(BARBER_ORDER.map(i => [String(i), BARBERS[i]]));
@@ -1316,8 +1425,9 @@
       return (isShop ? payoutFrom(p) === who : p.barber === Number(who)) && (!from || day >= from) && (!to || day <= to);
     });
     const exps = !isShop ? [] : loadExpenses().filter(x => expenseFrom(x) === who && inRange(x.date, from, to));
+    const sls = !isShop ? [] : loadSales().filter(s => payOf(s) === who && inRange(s.date, from, to));
 
-    if (!list.length && !pays.length && !exps.length) {
+    if (!list.length && !pays.length && !exps.length && !sls.length) {
       document.getElementById('report').innerHTML = `<div class="empty">لا توجد حركات في هذه الفترة</div>`;
       return;
     }
@@ -1333,11 +1443,13 @@
       // حساب (صندوق المحل / كليك / فيزا): المبلغ كامل بينزل بالحساب
       const totalPaid = pays.reduce((t, p) => t + p.amount, 0);
       const totalExp = exps.reduce((t, x) => t + x.amount, 0);
+      const totalSales = sls.reduce((t, s) => t + s.amount, 0);
       const paidStat = (label, v) => `<div class="stat paid"><div class="label">${label}</div><div class="value">${money(v)}</div></div>`;
       summary = stat('المبالغ اللي نزلت', money(totalAmount)) +
+        (sls.length ? stat('المبيعات', money(totalSales)) : '') +
         (isPayoutAccount ? paidStat('سندات الصرف للحلاقين', totalPaid) : stat('عدد الحركات', list.length)) +
         paidStat('المصاريف', totalExp) +
-        stat(who === 'cash' ? 'رصيد الصندوق' : 'رصيد الحساب', money(totalAmount - totalPaid - totalExp), true) +
+        stat(who === 'cash' ? 'رصيد الصندوق' : 'رصيد الحساب', money(totalAmount + totalSales - totalPaid - totalExp), true) +
         stat('للحلاقين (60%)', money(totalBarber)) + stat('ربح المحل (40%)', money(totalShop));
       head = '<th>#</th><th>التاريخ</th><th>الحلاق</th><th>المبلغ</th><th>للحلاق (60%)</th><th>للمحل (40%)</th>';
       rows = list.map((e, i) => `<tr>
@@ -1373,6 +1485,7 @@
     document.getElementById('report').innerHTML = `
       <div class="summary six">${summary}</div>
       ${entriesTable}
+      ${sls.length ? `<h3 class="rep-title">المبيعات (نزلت بـ ${accountName(who)})</h3>` + salesTable(sls, false) : ''}
       ${pays.length ? '<h3 class="rep-title">سندات الصرف' + (isShop ? ` (انخصمت من ${accountName(who)})` : '') + '</h3>' + payoutsTable(pays, isShop) : ''}
       ${exps.length ? `<h3 class="rep-title">المصاريف (انخصمت من ${accountName(who)})</h3>` + expensesTable(exps, false) : ''}`;
   }
@@ -1495,21 +1608,29 @@
     const list = load().filter(e => inRange(e.date, from, to));
     const pays = shopOnly ? [] : loadPayouts().filter(p => inRange(p.date, from, to));
     const exps = loadExpenses().filter(x => inRange(x.date, from, to));
+    const sls = loadSales().filter(s => inRange(s.date, from, to));
     const report = document.getElementById('lstReport');
-    if (!list.length && !pays.length && !exps.length) {
+    if (!list.length && !pays.length && !exps.length && !sls.length) {
       report.innerHTML = '<div class="empty">لا توجد حركات في هذه الفترة</div>'; return;
     }
     const sum = (arr, f = () => true) => arr.reduce((t, v) => f(v) ? t + v.amount : t, 0);
     // بدون حساب الحلاقين: المستلم = نسبة المحل من كل حركة
     const recOf = e => shopOnly ? e.shopShare : e.amount;
     const sumRec = (f = () => true) => list.reduce((t, e) => f(e) ? t + recOf(e) : t, 0);
-    const received = sumRec(), paid = sum(pays), spent = sum(exps);
-    const net = received - paid - spent;
+    // المبيعات بتنحسب كاملة للمحل بالحالتين
+    const received = sumRec(), sold = sum(sls), paid = sum(pays), spent = sum(exps);
+    const net = received + sold - paid - spent;
     const stat = (label, value, cls) => `<div class="stat${cls ? ' ' + cls : ''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
     const neg = v => v ? '-' + money(v) : money(0);
+    // عدد مربعات الملخص: 4 بصف واحد، غير هيك 3 بالصف
+    const statCount = 3 + (shopOnly ? 0 : 1) + (sls.length ? 1 : 0);
 
     const recRows = Object.keys(PAYMENTS).map(k => {
       const v = sumRec(e => payOf(e) === k);
+      return v ? `<tr class="sub"><td>${accountName(k)}</td><td class="num">${money(v)}</td></tr>` : '';
+    }).join('');
+    const saleRows = Object.keys(PAYMENTS).map(k => {
+      const v = sum(sls, s => payOf(s) === k);
       return v ? `<tr class="sub"><td>${accountName(k)}</td><td class="num">${money(v)}</td></tr>` : '';
     }).join('');
     const payRows = BARBER_ORDER.map(i => {
@@ -1527,8 +1648,9 @@
     const recLabel = shopOnly ? 'نسبة المحل (40%)' : 'المبالغ المستلمة';
 
     report.innerHTML = `
-      <div class="summary${shopOnly ? '' : ' four'}">
+      <div class="summary${statCount === 4 ? ' four' : ''}">
         ${stat(recLabel, money(received))}
+        ${sls.length ? stat('المبيعات', money(sold)) : ''}
         ${shopOnly ? '' : stat('المعطى للحلاقين', money(paid), 'paid')}
         ${stat('المصاريف', money(spent), 'paid')}
         ${stat('صافي الإيراد', money(net), 'gold net' + (net < 0 ? ' neg' : ''))}
@@ -1540,6 +1662,8 @@
         <tbody>
           <tr class="main"><td>${recLabel} (${list.length} حركة)</td><td class="num">${money(received)}</td></tr>
           ${recRows}
+          ${sls.length ? `<tr class="main"><td>زائد: المبيعات (${sls.length})</td><td class="num">${money(sold)}</td></tr>
+          ${saleRows}` : ''}
           ${shopOnly ? '' : `<tr class="main"><td>ناقص: المبالغ المعطاة للحلاقين (${pays.length} سند)</td><td class="num neg">${neg(paid)}</td></tr>
           ${payRows}`}
           <tr class="main"><td>ناقص: المصاريف (${exps.length})</td><td class="num neg">${neg(spent)}</td></tr>
@@ -1554,6 +1678,7 @@
         <tbody>${entryRows}</tbody>
         <tfoot><tr><td colspan="4">مجموع المستلم (${list.length} حركة)</td><td class="num">${money(sum(list))}</td>${shopOnly ? `<td class="num">${money(received)}</td>` : ''}</tr></tfoot>
       </table></div>` : ''}
+      ${sls.length ? '<h3 class="rep-title">تفاصيل المبيعات</h3>' + salesTable(sls, true) : ''}
       ${pays.length ? '<h3 class="rep-title">تفاصيل المبالغ المعطاة للحلاقين</h3>' + payoutsTable(pays, true) : ''}
       ${exps.length ? '<h3 class="rep-title">تفاصيل المصاريف</h3>' + expensesTable(exps, true) : ''}`;
   }
@@ -1692,11 +1817,14 @@
     const list = load().filter(e => localDay(e.date) === day);
     const dayPays = loadPayouts().filter(p => localDay(p.date) === day);
     const dayExps = loadExpenses().filter(x => localDay(x.date) === day);
+    const daySales = loadSales().filter(s => localDay(s.date) === day);
     const report = document.getElementById('dayReport');
-    if (!list.length && !dayPays.length && !dayExps.length) { report.innerHTML = '<div class="empty">لا توجد حركات بهاليوم</div>'; return; }
+    if (!list.length && !dayPays.length && !dayExps.length && !daySales.length) { report.innerHTML = '<div class="empty">لا توجد حركات بهاليوم</div>'; return; }
+    const salesSection = daySales.length ? '<h3 class="rep-title">المبيعات</h3>' + salesTable(daySales, true) : '';
     const paysSection = (dayPays.length ? '<h3 class="rep-title">سندات الصرف</h3>' + payoutsTable(dayPays, true) : '') +
       (dayExps.length ? '<h3 class="rep-title">المصاريف</h3>' + expensesTable(dayExps, true) : '');
-    if (!list.length) { report.innerHTML = paysSection; return; }
+    if (!list.length && !daySales.length) { report.innerHTML = paysSection; return; }
+    const sold = daySales.reduce((t, s) => t + s.amount, 0);
 
     let total = 0, toBarbers = 0, toShop = 0;
     const accounts = {};
@@ -1715,12 +1843,15 @@
       Object.keys(PAYMENTS).map(k => {
         const ps = dayPays.filter(p => payoutFrom(p) === k);
         const xs = dayExps.filter(x => expenseFrom(x) === k);
-        if (!ps.length && !xs.length) return '';
+        const ss = daySales.filter(s => payOf(s) === k);
+        if (!ps.length && !xs.length && !ss.length) return '';
         const paid = ps.reduce((t, p) => t + p.amount, 0);
         const spent = xs.reduce((t, x) => t + x.amount, 0);
-        return (ps.length ? `<tr><td>سندات صرف (من ${accountName(k)})</td><td>${ps.length}</td><td class="num">-${money(paid)}</td></tr>` : '') +
+        const soldHere = ss.reduce((t, s) => t + s.amount, 0);
+        return (ss.length ? `<tr><td>مبيعات (بـ ${accountName(k)})</td><td>${ss.length}</td><td class="num">${money(soldHere)}</td></tr>` : '') +
+          (ps.length ? `<tr><td>سندات صرف (من ${accountName(k)})</td><td>${ps.length}</td><td class="num">-${money(paid)}</td></tr>` : '') +
           (xs.length ? `<tr><td>مصاريف (من ${accountName(k)})</td><td>${xs.length}</td><td class="num">-${money(spent)}</td></tr>` : '') +
-          `<tr><td><b>الباقي بـ ${accountName(k)}</b></td><td></td><td class="num"><b>${money(accounts[k].amount - paid - spent)}</b></td></tr>`;
+          `<tr><td><b>الباقي بـ ${accountName(k)}</b></td><td></td><td class="num"><b>${money(accounts[k].amount + soldHere - paid - spent)}</b></td></tr>`;
       }).join('');
     const barberRows = BARBER_ORDER.map(i => [per[i], i]).map(([b, i]) => b.count ? `<tr>
       <td>${BARBERS[i]}</td><td>${b.count}</td><td class="num">${money(b.amount)}</td>
@@ -1730,20 +1861,27 @@
       <td class="num">${money(e.amount)}</td><td class="num">${money(e.barberShare)}</td><td class="num">${money(e.shopShare)}</td></tr>`).join('');
 
     report.innerHTML = `
-      <div class="summary four">
+      ${daySales.length ? `<div class="summary six">
+        ${stat('عدد الحركات', list.length)}
+        ${stat('المبيعات', money(sold))}
+        ${stat('إجمالي الدخل', money(total + sold), true)}
+        ${stat('للحلاقين (60%)', money(toBarbers))}
+        ${stat('ربح المحل (40%)', money(toShop))}
+        ${stat('ربح المحل مع المبيعات', money(toShop + sold), true)}
+      </div>` : `<div class="summary four">
         ${stat('عدد الحركات', list.length)}
         ${stat('إجمالي الدخل', money(total), true)}
         ${stat('للحلاقين (60%)', money(toBarbers))}
         ${stat('ربح المحل (40%)', money(toShop))}
-      </div>
+      </div>`}
 
       <h3 class="rep-title">وين راحت المبالغ</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>الحساب</th><th>عدد الحركات</th><th>المبلغ</th></tr></thead>
         <tbody>${accRows}</tbody>
-        <tfoot><tr><td>المجموع</td><td>${list.length}</td><td class="num">${money(total)}</td></tr></tfoot>
+        <tfoot><tr><td>المجموع${daySales.length ? ' (مع المبيعات)' : ''}</td><td>${list.length + daySales.length}</td><td class="num">${money(total + sold)}</td></tr></tfoot>
       </table></div>
-
+      ${list.length ? `
       <h3 class="rep-title">الحلاقين</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>الحلاق</th><th>الحركات</th><th>المبلغ</th><th>للحلاق (60%)</th><th>للمحل (40%)</th></tr></thead>
@@ -1758,7 +1896,8 @@
         <tbody>${moveRows}</tbody>
         <tfoot><tr><td colspan="4">المجموع</td><td class="num">${money(total)}</td>
           <td class="num">${money(toBarbers)}</td><td class="num">${money(toShop)}</td></tr></tfoot>
-      </table></div>
+      </table></div>` : ''}
+      ${salesSection}
       ${paysSection}`;
   }
 
@@ -1844,7 +1983,7 @@
 
   async function exportBackup() {
     const list = load();
-    const data = JSON.stringify({ app: '97-hair-design', version: 2, exportedAt: new Date().toISOString(), entries: list, payouts: loadPayouts(), expenses: loadExpenses() }, null, 1);
+    const data = JSON.stringify({ app: '97-hair-design', version: 2, exportedAt: new Date().toISOString(), entries: list, payouts: loadPayouts(), expenses: loadExpenses(), sales: loadSales() }, null, 1);
     const name = `97-hair-design-backup-${today()}.json`;
     const file = new File([data], name, { type: 'application/json' });
 
@@ -1867,7 +2006,7 @@
     }
     localStorage.setItem(BACKUP_KEY, new Date().toISOString());
     renderBackupNote();
-    toast(`✓ تم حفظ نسخة احتياطية (${list.length} حركة)`);
+    toast(`✓ تم حفظ نسخة احتياطية (${list.length} حركة و${sales.length} بيع)`);
   }
 
   function isValidEntry(e) {
@@ -1887,21 +2026,28 @@
       typeof x.amount === 'number' && isFinite(x.amount);
   }
 
+  function isValidSale(s) {
+    return s && typeof s.id === 'number' && typeof s.date === 'string' && !isNaN(new Date(s.date)) &&
+      typeof s.amount === 'number' && isFinite(s.amount);
+  }
+
   function importBackup(input) {
     const f = input.files[0];
     input.value = '';
     if (!f) return;
     const reader = new FileReader();
     reader.onload = () => {
-      let entries, pays, exps;
+      let entries, pays, exps, sls;
       try {
         const data = JSON.parse(reader.result);
         entries = Array.isArray(data) ? data : data.entries;
         pays = Array.isArray(data) ? [] : (data.payouts || []);
         exps = Array.isArray(data) ? [] : (data.expenses || []);
+        sls = Array.isArray(data) ? [] : (data.sales || []);
         if (!Array.isArray(entries) || !entries.every(isValidEntry)) throw new Error('bad');
         if (!Array.isArray(pays) || !pays.every(isValidPayout)) throw new Error('bad');
         if (!Array.isArray(exps) || !exps.every(isValidExpense)) throw new Error('bad');
+        if (!Array.isArray(sls) || !sls.every(isValidSale)) throw new Error('bad');
       } catch (e) {
         alert('هاد الملف مش نسخة احتياطية صحيحة من البرنامج');
         return;
@@ -1913,8 +2059,10 @@
       const freshPays = pays.filter(p => !payIds.has(p.id));
       const expIds = new Set(expenses.map(x => x.id));
       const freshExps = exps.filter(x => !expIds.has(x.id));
-      if (!fresh.length && !freshPays.length && !freshExps.length) { toast('كل اللي بالملف موجود أصلاً'); return; }
-      if (!confirm(`الملف فيه ${fresh.length} حركة و${freshPays.length} سند صرف و${freshExps.length} مصروف مش موجودين هلق.\nبدك تضيفهم؟ (الموجود ما بيتغير)`)) return;
+      const saleIds = new Set(sales.map(s => s.id));
+      const freshSales = sls.filter(s => !saleIds.has(s.id));
+      if (!fresh.length && !freshPays.length && !freshExps.length && !freshSales.length) { toast('كل اللي بالملف موجود أصلاً'); return; }
+      if (!confirm(`الملف فيه ${fresh.length} حركة و${freshPays.length} سند صرف و${freshExps.length} مصروف و${freshSales.length} بيع مش موجودين هلق.\nبدك تضيفهم؟ (الموجود ما بيتغير)`)) return;
       (async () => {
         await writeEntries(fresh);
         for (let i = 0; i < freshPays.length; i += 400) {
@@ -1927,8 +2075,13 @@
           freshExps.slice(i, i + 400).forEach(x => batch.set(expensesRef.doc(String(x.id)), x));
           await batch.commit();
         }
+        for (let i = 0; i < freshSales.length; i += 400) {
+          const batch = db.batch();
+          freshSales.slice(i, i + 400).forEach(s => batch.set(salesRef.doc(String(s.id)), s));
+          await batch.commit();
+        }
       })()
-        .then(() => toast(`✓ تم استرجاع ${fresh.length} حركة و${freshPays.length} سند و${freshExps.length} مصروف`))
+        .then(() => toast(`✓ تم استرجاع ${fresh.length} حركة و${freshPays.length} سند و${freshExps.length} مصروف و${freshSales.length} بيع`))
         .catch(writeError);
     };
     reader.readAsText(f);
@@ -1942,12 +2095,13 @@
   // ---------- حذف كل شي قبل تاريخ ----------
   function purgeTargets() {
     const day = document.getElementById('purgeDate').value;
-    if (!day) return { day, ents: [], pays: [], exps: [] };
+    if (!day) return { day, ents: [], pays: [], exps: [], sls: [] };
     return {
       day,
       ents: entries.filter(e => localDay(e.date) < day),
       pays: payouts.filter(p => localDay(p.date) < day),
-      exps: expenses.filter(x => localDay(x.date) < day)
+      exps: expenses.filter(x => localDay(x.date) < day),
+      sls: sales.filter(s => localDay(s.date) < day)
     };
   }
   function renderPurge() {
@@ -1956,30 +2110,30 @@
       const now = bizNow();
       input.value = dayStr(new Date(now.getFullYear(), now.getMonth(), 1));
     }
-    const { day, ents, pays, exps } = purgeTargets();
+    const { day, ents, pays, exps, sls } = purgeTargets();
     const total = ents.reduce((t, e) => t + e.amount, 0);
-    const any = ents.length || pays.length || exps.length;
+    const any = ents.length || pays.length || exps.length || sls.length;
     document.getElementById('purgeInfo').innerHTML = any
-      ? `رح ينحذف <b>${ents.length}</b> حركة (مجموعها ${money(total)}) و<b>${pays.length}</b> سند صرف و<b>${exps.length}</b> مصروف، كلهم قبل ${day}`
+      ? `رح ينحذف <b>${ents.length}</b> حركة (مجموعها ${money(total)}) و<b>${pays.length}</b> سند صرف و<b>${exps.length}</b> مصروف و<b>${sls.length}</b> بيع، كلهم قبل ${day}`
       : `ما في شي قبل ${day}`;
     document.getElementById('purgeBtn').disabled = !any;
   }
   async function purgeBefore() {
-    const { day, ents, pays, exps } = purgeTargets();
-    if (!ents.length && !pays.length && !exps.length) return;
-    if (!confirm(`متأكد؟ رح تنحذف ${ents.length} حركة و${pays.length} سند صرف و${exps.length} مصروف قبل ${day}، من كل الأجهزة، وما بترجع إلا من نسخة احتياطية.`)) return;
+    const { day, ents, pays, exps, sls } = purgeTargets();
+    if (!ents.length && !pays.length && !exps.length && !sls.length) return;
+    if (!confirm(`متأكد؟ رح تنحذف ${ents.length} حركة و${pays.length} سند صرف و${exps.length} مصروف و${sls.length} بيع قبل ${day}، من كل الأجهزة، وما بترجع إلا من نسخة احتياطية.`)) return;
     const btn = document.getElementById('purgeBtn');
     btn.disabled = true;
     btn.textContent = 'جاري الحذف...';
     try {
       const refs = ents.map(e => entriesRef.doc(String(e.id))).concat(pays.map(p => payoutsRef.doc(String(p.id))))
-        .concat(exps.map(x => expensesRef.doc(String(x.id))));
+        .concat(exps.map(x => expensesRef.doc(String(x.id)))).concat(sls.map(s => salesRef.doc(String(s.id))));
       for (let i = 0; i < refs.length; i += 400) {
         const batch = db.batch();
         refs.slice(i, i + 400).forEach(r => batch.delete(r));
         await batch.commit();
       }
-      toast(`✓ انحذفت ${ents.length} حركة و${pays.length} سند صرف و${exps.length} مصروف`);
+      toast(`✓ انحذفت ${ents.length} حركة و${pays.length} سند صرف و${exps.length} مصروف و${sls.length} بيع`);
     } catch (e) {
       writeError();
     }
@@ -1995,8 +2149,19 @@
     const today = dayStr(now);
     const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 6);
     const from = removeRange === 'today' ? today : removeRange === 'week' ? dayStr(weekAgo) : '';
-    const list = load().filter(e => !from || localDay(e.date) >= from).sort((a, b) => b.date.localeCompare(a.date));
-    document.getElementById('removeList').innerHTML = list.length ? list.map(e => `
+    const list = load().filter(e => !from || localDay(e.date) >= from)
+      .concat(loadSales().filter(s => !from || localDay(s.date) >= from).map(s => ({ ...s, isSale: true })))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    document.getElementById('removeList').innerHTML = list.length ? list.map(e => e.isSale ? `
+      <div class="item">
+        <div class="avatar sm" style="background:var(--gold);color:var(--gold-ink);font-size:11px">بيع</div>
+        <div class="info">
+          <b>${escapeHtml(e.item || '—')}</b>
+          <div class="meta"><span>${fmtDate(e.date)}</span><span class="pay-tag">${payName(e)}</span><span class="pay-tag">مبيعات</span></div>
+        </div>
+        <div class="amt">${money(e.amount)}</div>
+        <button class="del-btn" title="حذف" onclick="deleteSale(${e.id})">${TRASH}</button>
+      </div>` : `
       <div class="item">
         ${avatar(e.barber, true)}
         <div class="info">
